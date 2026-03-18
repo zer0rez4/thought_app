@@ -1,6 +1,7 @@
 class User():
-    def __init__(self, user_id: int, user_email: str, hashed_password: str) -> None:
+    def __init__(self, user_id: int, user_email: str, hashed_password: str, user_name: str) -> None:
         self.user_id = user_id
         self.user_email = user_email
         self.hashed_password = hashed_password
+        self.user_name = user_name
         self.is_active = True
