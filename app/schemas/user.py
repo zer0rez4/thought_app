@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    name: str
 
 
 class UserLogin(BaseModel):
@@ -14,3 +15,4 @@ class UserLogin(BaseModel):
 class UserResponce(BaseModel):
     id: int
     email: str
+    name: str

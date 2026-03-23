@@ -26,7 +26,8 @@ def register(user: UserCreate):
     new_user = User(
         user_id = uniq_user_id,
         user_email = user.email,
-        hashed_password = password_hash        
+        hashed_password = password_hash,  
+        user_name = user.name
     )
 
     user_db[user.email] = new_user
@@ -48,7 +49,7 @@ def login(user: UserLogin):
     password_hash = db_data.hashed_password
 
     if verify_password(user.password, password_hash):
-        return UserResponce(id=db_data.user_id, email=user.email)
+        return UserResponce(id=db_data.user_id, email=user.email, name=db_data.user_name)
     else:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
