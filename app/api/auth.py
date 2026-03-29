@@ -7,15 +7,15 @@ from core.security import hash_password, verify_password
 router = APIRouter()
 
 
-user_db = {}
+user_db_by_email = {}
+user_db_by_id = {}
 uniq_user_id = 1
-
 
 @router.post('/register')
 def register(user: UserCreate):
     global uniq_user_id
 
-    if user.email in user_db:
+    if user.email in user_db_by_email:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = 'User already exists'
@@ -30,7 +30,8 @@ def register(user: UserCreate):
         user_name = user.name
     )
 
-    user_db[user.email] = new_user
+    user_db_by_email[user.email] = new_user
+    user_db_by_id[uniq_user_id] = new_user
     uniq_user_id += 1
 
     return {'status': 'created'}
@@ -39,13 +40,13 @@ def register(user: UserCreate):
 
 @router.post('/login')
 def login(user: UserLogin):
-    if user.email not in user_db:
+    if user.email not in user_db_by_email:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = 'User does not exist'
         )
 
-    db_data = user_db[user.email]
+    db_data = user_db_by_email[user.email]
     password_hash = db_data.hashed_password
 
     if verify_password(user.password, password_hash):
