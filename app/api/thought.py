@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Header, status, HTTPException
+from typing import List
 
 from schemas.thoughts import CreateThought, ThoughtResponse
 from domain.thoughts import Thoughts
@@ -31,7 +32,15 @@ def thought_create(
     thought_uniq_id += 1
 
     author_name = user_db_by_id[user_id].user_name
-    return ThoughtResponse(id=new_thought.thought_id, text=new_thought.text, author=author_name, is_public=new_thought.is_public)
+    
+    result = ThoughtResponse(
+        id=new_thought.thought_id,
+        text=new_thought.text,
+        author=author_name,
+        is_public=new_thought.is_public
+    )
+    
+    return result
 
 
 @router.get('/thoughts/{thought_id}')
@@ -59,3 +68,27 @@ def thought_get(
             )
     else:
         return ThoughtResponse(id=db_data.thought_id, text=db_data.text, author=author_name, is_public=db_data.is_public)
+    
+
+### продербажить и замерджить
+
+@router.get('/thoughts', response_model=List[ThoughtResponse])
+def get_thoughts(
+    user_id: int = Header(...)
+    ):
+    result = []
+
+    for thought in thoughts_db.values():
+        if thought.is_public or thought.author_id == user_id:
+            author_name = user_db_by_id[thought.author_id].user_name
+
+            result.append(
+                ThoughtResponse(
+                    id = thought.thought_id,
+                    text = thought.text,
+                    author = author_name,
+                    is_public = thought.is_public
+                )
+            )
+
+    return result
