@@ -68,8 +68,32 @@ def random_thought():
     )
 
 
+@router.get('/thoughts/my', response_model=List[ThoughtResponse])
+def my_thoughts(
+    user_id: int = Header(...)
+    ):
 
-@router.get('/thoughts/{thought_id}')
+    result = []
+
+    for thought in thoughts_db.values():
+        if thought.author_id == user_id:
+            author_name = user_db_by_id[user_id].user_name
+
+            result.append(
+                ThoughtResponse(
+                    id = thought.thought_id,
+                    text = thought.text,
+                    author = author_name,
+                    is_public = thought.is_public
+                )
+            )
+
+    return result
+    
+
+
+
+@router.get('/thoughts/{thought_id}', response_model=ThoughtResponse)
 def thought_get(
     thought_id: int,
     user_id: int = Header(...)
