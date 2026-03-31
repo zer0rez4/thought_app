@@ -91,8 +91,6 @@ def my_thoughts(
     return result
     
 
-
-
 @router.get('/thoughts/{thought_id}', response_model=ThoughtResponse)
 def thought_get(
     thought_id: int,
@@ -140,3 +138,28 @@ def get_thoughts(
             )
 
     return result
+
+
+@router.delete('/thoughts/{thought_id}')
+def delete_thought(
+    thought_id: int,
+    user_id: int = Header(...)
+    ):
+
+    if thought_id not in thoughts_db:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = 'thought does not exist'
+        )
+
+    thought = thoughts_db[thought_id]
+
+    if thought.author_id != user_id:
+        raise HTTPException(
+            status_code = status.HTTP_403_FORBIDDEN,
+            detail = 'user has no rights'
+        )
+
+    del thoughts_db[thought_id]
+
+    return {'status': 'deleted'}
