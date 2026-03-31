@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Header, status, HTTPException
 from typing import List
+from random import choice
 
 from schemas.thoughts import CreateThought, ThoughtResponse
 from domain.thoughts import Thoughts
@@ -43,6 +44,31 @@ def thought_create(
     return result
 
 
+@router.get('/thoughts/random', response_model=ThoughtResponse)
+def random_thought():
+    public_thoughts = [
+        thought for thought in thoughts_db.values() if thought.is_public
+    ]
+
+    if not public_thoughts:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = 'No public thoughts'
+        )
+
+    thought = choice(public_thoughts)
+
+    author_name = user_db_by_id[thought.author_id].user_name
+
+    return ThoughtResponse(
+        id = thought.thought_id,
+        text = thought.text,
+        author = author_name,
+        is_public = thought.is_public
+    )
+
+
+
 @router.get('/thoughts/{thought_id}')
 def thought_get(
     thought_id: int,
@@ -68,9 +94,7 @@ def thought_get(
             )
     else:
         return ThoughtResponse(id=db_data.thought_id, text=db_data.text, author=author_name, is_public=db_data.is_public)
-    
 
-### продербажить и замерджить
 
 @router.get('/thoughts', response_model=List[ThoughtResponse])
 def get_thoughts(
