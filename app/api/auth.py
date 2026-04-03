@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from sqlalchemy.orm import Session
 
 from schemas.user import UserCreate, UserLogin, UserResponce
-from domain.user import User
 from core.security import hash_password, verify_password
+from database.database import get_db
+from database.models import UserBase, ThoughtBase
 
 router = APIRouter()
 
@@ -11,28 +13,28 @@ user_db_by_email = {}
 user_db_by_id = {}
 uniq_user_id = 1
 
-@router.post('/register')
-def register(user: UserCreate):
-    global uniq_user_id
 
-    if user.email in user_db_by_email:
+@router.post('/register')
+def register(user: UserCreate, db: Session=Depends(get_db)):
+    existing_user = db.query(UserBase).filter(UserBase.email == user.email).first()
+
+    if existing_user:
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = 'User already exists'
         )
 
     password_hash = hash_password(user.password)
-
-    new_user = User(
-        user_id = uniq_user_id,
-        user_email = user.email,
+    
+    new_user = UserBase(
+        email = user.email,
         hashed_password = password_hash,  
-        user_name = user.name
+        name = user.name
     )
 
-    user_db_by_email[user.email] = new_user
-    user_db_by_id[uniq_user_id] = new_user
-    uniq_user_id += 1
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
     return {'status': 'created'}
 
