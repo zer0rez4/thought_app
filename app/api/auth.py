@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from schemas.user import UserCreate, UserLogin, UserResponce
 from core.security import hash_password, verify_password
 from database.database import get_db
-from database.models import UserBase, ThoughtBase
+from database.models import UserBase
 
 router = APIRouter()
 
@@ -41,18 +41,19 @@ def register(user: UserCreate, db: Session=Depends(get_db)):
 
 
 @router.post('/login')
-def login(user: UserLogin):
-    if user.email not in user_db_by_email:
+def login(user: UserLogin, db: Session=Depends(get_db)):
+    log_user = db.query(UserBase).filter(UserBase.email == user.email).first()
+    
+    if not log_user:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = 'User does not exist'
         )
 
-    db_data = user_db_by_email[user.email]
-    password_hash = db_data.hashed_password
+    password_hash = log_user.hashed_password
 
     if verify_password(user.password, password_hash):
-        return UserResponce(id=db_data.user_id, email=user.email, name=db_data.user_name)
+        return UserResponce(id=log_user.id, email=user.email, name=log_user.name)
     else:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
