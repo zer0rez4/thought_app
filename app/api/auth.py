@@ -9,13 +9,12 @@ from database.models import UserBase
 router = APIRouter()
 
 
-user_db_by_email = {}
-user_db_by_id = {}
-uniq_user_id = 1
-
-
 @router.post('/register')
-def register(user: UserCreate, db: Session=Depends(get_db)):
+def register(
+    user: UserCreate, 
+    db: Session=Depends(get_db)
+    ):
+
     existing_user = db.query(UserBase).filter(UserBase.email == user.email).first()
 
     if existing_user:
@@ -41,7 +40,11 @@ def register(user: UserCreate, db: Session=Depends(get_db)):
 
 
 @router.post('/login')
-def login(user: UserLogin, db: Session=Depends(get_db)):
+def login(
+    user: UserLogin, 
+    db: Session=Depends(get_db)
+    ):
+
     log_user = db.query(UserBase).filter(UserBase.email == user.email).first()
     
     if not log_user:

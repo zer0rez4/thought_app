@@ -12,8 +12,7 @@ app = FastAPI(title='thoughts note')
 app.include_router(auth_router)
 app.include_router(thought_router)
 
-from api.auth import user_db_by_id
-
 @app.get('/')
 def test():
-    return user_db_by_id
+    return {'status':'ok'}
+
