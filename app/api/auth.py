@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from schemas.user import UserCreate, UserLogin, UserResponce
 from core.security import hash_password, verify_password
+from core.jwt import create_access_token
 from database.database import get_db
 from database.models import UserBase
 
@@ -35,13 +36,19 @@ def register(
     db.commit()
     db.refresh(new_user)
 
-    return {'status': 'created'}
+    to_encode = {'sub': str(new_user.id)}
+    token = create_access_token(to_encode)
+
+    return {
+        'access_token': token,
+        'token_type': "bearer"
+    }
 
 
 
 @router.post('/login')
 def login(
-    user: UserLogin, 
+    user: UserLogin,
     db: Session=Depends(get_db)
     ):
 
@@ -56,7 +63,13 @@ def login(
     password_hash = log_user.hashed_password
 
     if verify_password(user.password, password_hash):
-        return UserResponce(id=log_user.id, email=user.email, name=log_user.name)
+        to_encode = {'sub': str(log_user.id)}
+        token = create_access_token(to_encode)
+
+        return {
+            'access_token': token,
+            'token_type': 'bearer'
+            }
     else:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
