@@ -10,7 +10,7 @@ from database.models import UserBase
 router = APIRouter()
 
 
-@router.post('/register')
+@router.post('/register', tags=['auth'])
 def register(
     user: UserCreate, 
     db: Session=Depends(get_db)
@@ -46,7 +46,7 @@ def register(
 
 
 
-@router.post('/login')
+@router.post('/login', tags=['auth'])
 def login(
     user: UserLogin,
     db: Session=Depends(get_db)

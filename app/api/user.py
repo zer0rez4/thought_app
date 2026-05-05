@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Header, status, HTTPException, Depends, Response
 from sqlalchemy.orm import Session
 
+from core.dependencies import get_current_user
 from schemas.user import UserChangeName, UserResponce
 from database.database import get_db
 from database.models import UserBase
@@ -8,18 +9,11 @@ from database.models import UserBase
 
 router = APIRouter()
 
-#прописать
-@router.get('/users/{user_id}')
-def get_user(): pass
 
-
-@router.get('/users/me', response_model=UserResponce)
+@router.get('/users/me', tags=['users'], response_model=UserResponce)
 def get_user_me(
-    user_id: int = Header(...),
-    db: Session = Depends(get_db)
+    user: UserBase = Depends(get_current_user)
     ):
-
-    user = db.query(UserBase).filter(UserBase.id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -28,7 +22,7 @@ def get_user_me(
         )
 
     result = UserResponce(
-        id = user_id,
+        id = user.id,
         email = user.email,
         name = user.name
     )
@@ -36,14 +30,17 @@ def get_user_me(
     return result
 
 
-@router.patch('/users/me', response_model=UserResponce)
+# прописать
+# @router.get('/users/{user_id}')
+# def get_user(): pass
+
+
+@router.patch('/users/me', tags=['users'], response_model=UserResponce)
 def change_user_name(
     user_update: UserChangeName,
-    user_id: int = Header(...), 
+    user: UserBase = Depends(get_current_user), 
     db: Session = Depends(get_db)
     ):
-
-    user = db.query(UserBase).filter(UserBase.id == user_id).first()
 
     user.name = user_update.new_name
 
@@ -51,7 +48,7 @@ def change_user_name(
     db.refresh(user)
 
     result = UserResponce(
-        id = user_id,
+        id = user.id,
         email = user.email,
         name = user.name
     )

@@ -7,19 +7,21 @@ from sqlalchemy.orm import Session
 from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought
 from database.database import get_db
 from database.models import ThoughtBase, UserBase
+from core.dependencies import get_current_user
 
 router = APIRouter()
 
-@router.post('/thoughts', response_model=ThoughtResponse)
+
+@router.post('/thoughts', tags=['thought'], response_model=ThoughtResponse)
 def thought_create(
     thought: CreateThought,
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
 
     new_thought = ThoughtBase(
         text = thought.text,
-        author_id = user_id,
+        author_id = user.id,
         is_public = thought.is_public
     )
 
@@ -33,19 +35,17 @@ def thought_create(
             detail = 'Field "text" must not be empty'
         )
 
-    author_name = db.query(UserBase).filter(UserBase.id == user_id).first().name
-
     result = ThoughtResponse(
         id=new_thought.id,
         text=new_thought.text,
-        author=author_name,
+        author=user.name,
         is_public=new_thought.is_public
     )
     
     return result
 
 
-@router.get('/thoughts/random', response_model=ThoughtResponse)
+@router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
 def random_thought(db: Session = Depends(get_db)):
     public_thoughts = db.query(ThoughtBase).filter(ThoughtBase.is_public == True).all()
 
@@ -67,15 +67,14 @@ def random_thought(db: Session = Depends(get_db)):
     )
 
 
-@router.get('/thoughts/my', response_model=List[ThoughtResponse])
+@router.get('/thoughts/my', tags=['thought'], response_model=List[ThoughtResponse])
 def my_thoughts(
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
 
-    thoughts = db.query(ThoughtBase).filter(ThoughtBase.author_id == user_id).all()
-    author_name = db.query(UserBase).filter(UserBase.id == user_id).first().name
-
+    thoughts = db.query(ThoughtBase).filter(ThoughtBase.author_id == user.id).all()
+    author_name = user.name
     result = []
 
     for thought in thoughts:
@@ -92,10 +91,10 @@ def my_thoughts(
     return result
     
 
-@router.get('/thoughts/{thought_id}', response_model=ThoughtResponse)
+@router.get('/thoughts/{thought_id}', tags=['thought'], response_model=ThoughtResponse)
 def thought_get(
     thought_id: int,
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
     
@@ -110,7 +109,7 @@ def thought_get(
     author_name = db.query(UserBase).filter(UserBase.id == thought.author_id).first().name
 
     if not thought.is_public:
-        if thought.author_id == user_id:
+        if thought.author_id == user.id:
             return ThoughtResponse(
                 id=thought.id,
                 text=thought.text,
@@ -131,9 +130,9 @@ def thought_get(
             )
 
 
-@router.get('/thoughts', response_model=List[ThoughtResponse])
+@router.get('/thoughts', tags=['thought'], response_model=List[ThoughtResponse])
 def get_thoughts(
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
     result = []
@@ -141,7 +140,7 @@ def get_thoughts(
     thoughts = db.query(ThoughtBase).filter(
         or_(
             ThoughtBase.is_public == True,
-            ThoughtBase.author_id == user_id
+            ThoughtBase.author_id == user.id
             )
         ).all()
 
@@ -159,11 +158,12 @@ def get_thoughts(
 
     return result
 
-@router.patch('/thoughts/{thought_id}', response_model = ThoughtResponse)
+
+@router.patch('/thoughts/{thought_id}', tags=['thought'], response_model = ThoughtResponse)
 def change_thought(
     thought_id: int,
     thought_update: UpdateThought,
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
 
@@ -175,7 +175,7 @@ def change_thought(
             detail = 'thought does not exist'
         )
     
-    if thought.author_id != user_id:
+    if thought.author_id != user.id:
         raise HTTPException(
             status_code = status.HTTP_403_FORBIDDEN,
             detail = 'user has no rights'
@@ -190,7 +190,7 @@ def change_thought(
     db.commit()
     db.refresh(thought)
 
-    author = db.query(UserBase).filter(UserBase.id == user_id).first().name
+    author = db.query(UserBase).filter(UserBase.id == user.id).first().name
 
     return ThoughtResponse(
         id = thought.id,
@@ -200,10 +200,10 @@ def change_thought(
     )
 
 
-@router.delete('/thoughts/{thought_id}')
+@router.delete('/thoughts/{thought_id}',  tags=['thought'])
 def delete_thought(
     thought_id: int,
-    user_id: int = Header(...),
+    user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
     ):
 
@@ -215,7 +215,7 @@ def delete_thought(
             detail = 'thought does not exist'
         )
 
-    if thought.author_id != user_id:
+    if thought.author_id != user.id:
         raise HTTPException(
             status_code = status.HTTP_403_FORBIDDEN,
             detail = 'user has no rights'
