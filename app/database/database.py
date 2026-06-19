@@ -1,14 +1,11 @@
-import os
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv()
-
-db_url = os.getenv('SQLALCHEMY_DATABASE_URL')
+from core.settings import settings
 
 engine = create_engine(
-    db_url, connect_args={'check_same_thread': False}
+    settings.SQLALCHEMY_DATABASE_URL, 
+    connect_args={'check_same_thread': False}
 )
 
 SessionLocal = sessionmaker(
