@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
+from schemas.thoughts import ThoughtResponse
 
 
 class UserCreate(BaseModel):
@@ -12,14 +13,21 @@ class UserLogin(BaseModel):
     password: str
 
 
-class UserResponce(BaseModel):
+class UserResponse(BaseModel):
     id: int
     email: str
     name: str
+    is_private: bool
 
 
-class UserChangeName(BaseModel):
-    new_name: str
+class UserProfileResponse(BaseModel):
+    name: str
+    thoughts: list[ThoughtResponse]
+
+
+class UserUpdate(BaseModel):
+    new_name: str | None = None
+    is_private: bool | None = None
     
     @field_validator('new_name')
     @classmethod

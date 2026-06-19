@@ -13,6 +13,7 @@ class UserBase(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    is_private = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
 

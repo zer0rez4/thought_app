@@ -139,7 +139,7 @@ def get_thoughts(
 
     thoughts = db.query(ThoughtBase).filter(
         or_(
-            ThoughtBase.is_public == True,
+            ThoughtBase.is_public.is_(True),
             ThoughtBase.author_id == user.id
             )
         ).all()
