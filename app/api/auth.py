@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
-from schemas.user import UserCreate, UserLogin, UserResponce
+from schemas.user import UserCreate, UserLogin
 from core.security import hash_password, verify_password
 from core.jwt import create_access_token
 from database.database import get_db
@@ -30,6 +30,7 @@ def register(
         email = user.email,
         hashed_password = password_hash,  
         name = user.name
+
     )
 
     db.add(new_user)
@@ -41,7 +42,7 @@ def register(
 
     return {
         'access_token': token,
-        'token_type': "bearer"
+        'token_type': "bearer",
     }
 
 
