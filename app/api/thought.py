@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Header, status, HTTPException, Response, Depends
+from fastapi import APIRouter, status, HTTPException, Response, Depends
 from typing import List
-from random import choice
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
 from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought
@@ -47,15 +46,13 @@ def thought_create(
 
 @router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
 def random_thought(db: Session = Depends(get_db)):
-    public_thoughts = db.query(ThoughtBase).filter(ThoughtBase.is_public == True).all()
+    thought = db.query(ThoughtBase).filter(ThoughtBase.is_public.is_(True)).order_by(func.random()).first()
 
-    if not public_thoughts:
+    if not thought:
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'No public thoughts'
+            detail = 'No available public thoughts'
         )
-
-    thought = choice(public_thoughts)
 
     author_name = db.query(UserBase).filter(UserBase.id == thought.author_id).first().name
 
