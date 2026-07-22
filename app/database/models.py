@@ -26,3 +26,4 @@ class ThoughtBase(Base):
     is_public = Column(Boolean)
 
 
+#check
