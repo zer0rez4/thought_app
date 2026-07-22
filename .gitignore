@@ -1,4 +1,21 @@
+# Virtual environment
 .venv/
-__pychache__/
+
+# Python cache
+__pycache__/
+
+# Environment variables
 .env
+
+# Databases
 *.db
+
+# IDE
+.vscode/
+.idea/
+
+# Test cache
+.pytest_cache/
+
+# Static type checker
+.mypy_cache/
