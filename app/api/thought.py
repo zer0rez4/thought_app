@@ -7,6 +7,8 @@ from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought
 from database.database import get_db
 from database.models import ThoughtBase, UserBase
 from core.dependencies import get_current_user
+from services.user import get_user_by_id
+from services.thought import get_thought_by_id, build_thought_response, check_thought_read_access
 
 router = APIRouter()
 
@@ -24,24 +26,14 @@ def thought_create(
         is_public = thought.is_public
     )
 
-    try:
-        db.add(new_thought)
-        db.commit()
-        db.refresh(new_thought)
-    except Exception:
-        raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
-            detail = 'Field "text" must not be empty'
-        )
+    db.add(new_thought)
+    db.commit()
+    db.refresh(new_thought)
 
-    result = ThoughtResponse(
-        id=new_thought.id,
-        text=new_thought.text,
-        author=user.name,
-        is_public=new_thought.is_public
+    return build_thought_response(
+        thought = new_thought,
+        author_name = user.name
     )
-    
-    return result
 
 
 @router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
@@ -54,14 +46,12 @@ def random_thought(db: Session = Depends(get_db)):
             detail = 'No available public thoughts'
         )
 
-    author_name = db.query(UserBase).filter(UserBase.id == thought.author_id).first().name
+    user = get_user_by_id(db=db, user_id=thought.author_id)
 
-    return ThoughtResponse(
-        id = thought.id,
-        text = thought.text,
-        author = author_name,
-        is_public = thought.is_public
-    )
+    return build_thought_response(
+    thought = thought,
+    author_name = user.name
+    )   
 
 
 @router.get('/thoughts/my', tags=['thought'], response_model=List[ThoughtResponse])
@@ -71,21 +61,14 @@ def my_thoughts(
     ):
 
     thoughts = db.query(ThoughtBase).filter(ThoughtBase.author_id == user.id).all()
-    author_name = user.name
-    result = []
 
-    for thought in thoughts:
-
-        result.append(
-            ThoughtResponse(
-                id = thought.id,
-                text = thought.text,
-                author = author_name,
-                is_public = thought.is_public
-            )
+    return [
+        build_thought_response(
+            thought = thought,
+            author_name = user.name
         )
- 
-    return result
+        for thought in thoughts
+    ]
     
 
 @router.get('/thoughts/{thought_id}', tags=['thought'], response_model=ThoughtResponse)
@@ -95,36 +78,16 @@ def thought_get(
     db: Session = Depends(get_db)
     ):
     
-    thought = db.query(ThoughtBase).filter(ThoughtBase.id == thought_id).first()
+    thought = get_thought_by_id(db=db, thought_id=thought_id)
     
-    if not thought:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'thought does not exist'
-        )
-    
-    author_name = db.query(UserBase).filter(UserBase.id == thought.author_id).first().name
+    author = get_user_by_id(db=db, user_id=thought.author_id)
 
-    if not thought.is_public:
-        if thought.author_id == user.id:
-            return ThoughtResponse(
-                id=thought.id,
-                text=thought.text,
-                author=author_name,
-                is_public=thought.is_public
-                )
-        else:
-            raise HTTPException(
-                status_code = status.HTTP_403_FORBIDDEN,
-                detail = 'thought is not public'
-            )
-    else:
-        return ThoughtResponse(
-            id=thought.id,
-            text=thought.text,
-            author=author_name,
-            is_public=thought.is_public
-            )
+    check_thought_read_access(thought=thought, user=user)
+
+    return build_thought_response(
+        thought = thought,
+        author_name = author.name
+    )
 
 
 @router.get('/thoughts', tags=['thought'], response_model=List[ThoughtResponse])
@@ -142,14 +105,12 @@ def get_thoughts(
         ).all()
 
     for thought in thoughts:
-        author_name = db.query(UserBase).filter(UserBase.id == thought.author_id).first().name
+        author = get_user_by_id(db=db, user_id=thought.author_id)
 
         result.append(
-            ThoughtResponse(
-                id = thought.id,
-                text = thought.text,
-                author = author_name,
-                is_public = thought.is_public
+            build_thought_response(
+                thought = thought,
+                author_name = author.name
             )
         )
 
@@ -164,19 +125,10 @@ def change_thought(
     db: Session = Depends(get_db)
     ):
 
-    thought = db.query(ThoughtBase).filter(ThoughtBase.id == thought_id).first()
-
-    if not thought:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'thought does not exist'
-        )
+    thought = get_thought_by_id(db=db, thought_id=thought_id)
     
-    if thought.author_id != user.id:
-        raise HTTPException(
-            status_code = status.HTTP_403_FORBIDDEN,
-            detail = 'user has no rights'
-        )
+
+    check_thought_read_access(thought = thought, user = user)
     
     if thought_update.text is not None:
         thought.text = thought_update.text
@@ -187,13 +139,9 @@ def change_thought(
     db.commit()
     db.refresh(thought)
 
-    author = db.query(UserBase).filter(UserBase.id == user.id).first().name
-
-    return ThoughtResponse(
-        id = thought.id,
-        text = thought.text,
-        author = author,
-        is_public = thought.is_public
+    return build_thought_response(
+        thought = thought,
+        author_name = user.name
     )
 
 
@@ -204,19 +152,9 @@ def delete_thought(
     db: Session = Depends(get_db)
     ):
 
-    thought = db.query(ThoughtBase).filter(ThoughtBase.id == thought_id).first()
+    thought = get_thought_by_id(db=db, thought_id=thought_id)
 
-    if not thought:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'thought does not exist'
-        )
-
-    if thought.author_id != user.id:
-        raise HTTPException(
-            status_code = status.HTTP_403_FORBIDDEN,
-            detail = 'user has no rights'
-        )
+    check_thought_read_access(thought = thought, user = user)
 
     db.delete(thought)
     db.commit()
