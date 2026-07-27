@@ -17,20 +17,12 @@ def get_user_me(
     user: UserBase = Depends(get_current_user)
     ):
 
-    if not user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'user does not exist'
-        )
-
-    result = UserResponse(
+    return UserResponse(
         id = user.id,
         email = user.email,
         name = user.name,
         is_private = user.is_private
     )
-
-    return result
 
 
 @router.get('/users/{user_id}', tags=['users'], response_model=UserProfileResponse)
