@@ -25,7 +25,7 @@ def register(
         )
 
     password_hash = hash_password(user.password)
-    
+
     new_user = UserBase(
         email = user.email,
         hashed_password = password_hash,  
