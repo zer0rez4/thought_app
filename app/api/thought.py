@@ -1,14 +1,15 @@
-from fastapi import APIRouter, status, HTTPException, Response, Depends
+from fastapi import APIRouter, status, HTTPException, Response, Depends, Query
 from typing import List
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought
+from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, ThoughtListResponse
 from database.database import get_db
 from database.models import ThoughtBase, UserBase
 from core.dependencies import get_current_user
 from services.user import get_user_by_id
-from services.thought import get_thought_by_id, build_thought_response, check_thought_read_access
+from services.thought import get_thought_by_id, build_thought_response, check_thought_read_access, build_thought_list_response
+
 
 router = APIRouter()
 
@@ -54,21 +55,35 @@ def random_thought(db: Session = Depends(get_db)):
     )   
 
 
-@router.get('/thoughts/my', tags=['thought'], response_model=List[ThoughtResponse])
+@router.get('/thoughts/my', tags=['thought'], response_model=ThoughtListResponse)
 def my_thoughts(
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=20),
+    offset: int = Query(default=0, ge=0)
     ):
 
-    thoughts = db.query(ThoughtBase).filter(ThoughtBase.author_id == user.id).all()
+    thoughts = (
+        db.query(ThoughtBase)
+        .filter(ThoughtBase.author_id == user.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
-    return [
-        build_thought_response(
-            thought = thought,
-            author_name = user.name
-        )
-        for thought in thoughts
-    ]
+    total = (
+        db.query(ThoughtBase)
+        .filter(ThoughtBase.author_id == user.id)
+        .count()
+    )
+
+    return build_thought_list_response(
+        thoughts_list=thoughts,
+        user=user,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
     
 
 @router.get('/thoughts/{thought_id}', tags=['thought'], response_model=ThoughtResponse)
@@ -90,31 +105,46 @@ def thought_get(
     )
 
 
-@router.get('/thoughts', tags=['thought'], response_model=List[ThoughtResponse])
+@router.get('/thoughts', tags=['thought'], response_model=ThoughtListResponse)
 def get_thoughts(
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=20),
+    offset: int = Query(default=0, ge=0)
     ):
-    result = []
-
-    thoughts = db.query(ThoughtBase).filter(
-        or_(
+    
+    thoughts = (
+        db.query(ThoughtBase)
+        .filter(
+            or_(
             ThoughtBase.is_public.is_(True),
             ThoughtBase.author_id == user.id
             )
-        ).all()
+        )
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
-    for thought in thoughts:
-        author = get_user_by_id(db=db, user_id=thought.author_id)
-
-        result.append(
-            build_thought_response(
-                thought = thought,
-                author_name = author.name
+    total = (
+        db.query(ThoughtBase)
+        .filter(
+            or_(
+            ThoughtBase.is_public.is_(True),
+            ThoughtBase.author_id == user.id
             )
         )
+        .count()
+    )
 
-    return result
+    return build_thought_list_response(
+        thoughts_list=thoughts,
+        user=user,
+        total=total,
+        limit=limit,
+        offset=offset,
+        db=db
+    )
 
 
 @router.patch('/thoughts/{thought_id}', tags=['thought'], response_model = ThoughtResponse)

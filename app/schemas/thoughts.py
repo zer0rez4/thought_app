@@ -23,3 +23,11 @@ class ThoughtResponse(BaseModel):
     text: str
     author: str
     is_public: bool
+
+
+class ThoughtListResponse(BaseModel):
+    items: list[ThoughtResponse]
+    total: int
+    limit: int
+    offset: int
+    has_next: bool
