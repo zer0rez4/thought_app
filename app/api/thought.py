@@ -1,5 +1,4 @@
 from fastapi import APIRouter, status, HTTPException, Response, Depends, Query
-from typing import List
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
@@ -8,7 +7,13 @@ from database.database import get_db
 from database.models import ThoughtBase, UserBase
 from core.dependencies import get_current_user
 from services.user import get_user_by_id
-from services.thought import get_thought_by_id, build_thought_response, check_thought_read_access, build_thought_list_response
+from services.thought import (
+    get_thought_by_id, 
+    build_thought_response, 
+    check_thought_read_access, 
+    build_thought_list_response, 
+    paginate_query, apply_search
+)
 
 
 router = APIRouter()
@@ -50,8 +55,8 @@ def random_thought(db: Session = Depends(get_db)):
     user = get_user_by_id(db=db, user_id=thought.author_id)
 
     return build_thought_response(
-    thought = thought,
-    author_name = user.name
+        thought = thought,
+        author_name = user.name
     )   
 
 
@@ -60,21 +65,20 @@ def my_thoughts(
     user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=20, ge=1, le=20),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    search: str | None = Query(default=None, min_length=1)
     ):
 
-    thoughts = (
-        db.query(ThoughtBase)
-        .filter(ThoughtBase.author_id == user.id)
-        .offset(offset)
-        .limit(limit)
-        .all()
+    query = db.query(ThoughtBase).filter(
+        ThoughtBase.author_id == user.id
     )
 
-    total = (
-        db.query(ThoughtBase)
-        .filter(ThoughtBase.author_id == user.id)
-        .count()
+    query = apply_search(query, search)
+
+    thoughts, total = paginate_query(
+        query=query,
+        limit=limit,
+        offset=offset, 
     )
 
     return build_thought_list_response(
@@ -84,7 +88,7 @@ def my_thoughts(
         limit=limit,
         offset=offset
     )
-    
+
 
 @router.get('/thoughts/{thought_id}', tags=['thought'], response_model=ThoughtResponse)
 def thought_get(
@@ -110,31 +114,23 @@ def get_thoughts(
     user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=20, ge=1, le=20),
-    offset: int = Query(default=0, ge=0)
+    offset: int = Query(default=0, ge=0),
+    search: str | None = Query(default=None, min_length=1)
     ):
     
-    thoughts = (
-        db.query(ThoughtBase)
-        .filter(
-            or_(
+    query = db.query(ThoughtBase).filter(
+        or_(
             ThoughtBase.is_public.is_(True),
             ThoughtBase.author_id == user.id
-            )
         )
-        .offset(offset)
-        .limit(limit)
-        .all()
     )
 
-    total = (
-        db.query(ThoughtBase)
-        .filter(
-            or_(
-            ThoughtBase.is_public.is_(True),
-            ThoughtBase.author_id == user.id
-            )
-        )
-        .count()
+    query = apply_search(query, search)
+
+    thoughts, total = paginate_query(
+        query=query,
+        limit=limit,
+        offset=offset
     )
 
     return build_thought_list_response(

@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 
 from database.models import ThoughtBase, UserBase
 from schemas.thoughts import ThoughtResponse, ThoughtListResponse
@@ -82,3 +82,34 @@ def build_thought_list_response(
         offset=offset,
         has_next=offset + limit < total
     )
+
+
+def paginate_query(
+        query: Query,
+        limit: int,
+        offset: int,
+) -> tuple[list[ThoughtBase], int]:
+
+    items = (
+        query
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    total = query.count()
+
+    return items, total
+
+
+def apply_search(
+        query: Query,
+        search: str | None = None
+) -> Query:
+    
+    if search:
+        query = query.filter(
+            ThoughtBase.text.ilike(f'%{search}%')
+        ) 
+
+    return query
