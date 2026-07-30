@@ -3,7 +3,8 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
-from schemas.user import UserUpdate, UserResponse, UserProfileResponse
+from core.security import verify_password
+from schemas.user import UserUpdate, UserResponse, UserProfileResponse, UserRestore
 from database.database import get_db
 from database.models import UserBase, ThoughtBase
 from services.user import get_user_by_id
@@ -17,7 +18,7 @@ from services.thought import (
 router = APIRouter()
 
 
-@router.get('/users/me', tags=['users'], response_model=UserResponse)
+@router.get('/users/me', tags=['users', 'me'], response_model=UserResponse)
 def get_user_me(
     user: UserBase = Depends(get_current_user)
     ):
@@ -28,6 +29,75 @@ def get_user_me(
         name = user.name,
         is_private = user.is_private
     )
+
+
+@router.patch('/users/me', tags=['users', 'me'], response_model=UserResponse)
+def user_update(
+    user_update: UserUpdate,
+    user: UserBase = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+    ):
+
+    if user_update.new_name is not None: 
+        user.name = user_update.new_name
+    if user_update.is_private is not None:
+        user.is_private = user_update.is_private
+
+    db.commit()
+    db.refresh(user)
+
+    result = UserResponse(
+        id = user.id,
+        email = user.email,
+        name = user.name,
+        is_private = user.is_private
+    )
+
+    return result
+
+
+@router.delete('/users/me', tags=['users', 'me'])
+def delete_user(
+    user: UserBase = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    
+    user.is_active = False
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post('/users/restore', tags=['users'])
+def restore_user(
+    user_data: UserRestore,
+    db: Session = Depends(get_db)
+):
+    
+    user = db.query(UserBase).filter(UserBase.email == user_data.email).first()
+
+    if not user:
+        raise HTTPException(
+            status_code = status.HTTP_404_NOT_FOUND,
+            detail = 'User does not exist'
+        )
+
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='account is already active'
+        )
+
+    if not verify_password(user_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="password is incorrect"
+        )
+
+    user.is_active = True
+    db.commit()
+
+    return Response(status_code=status.HTTP_200_OK)
 
 
 @router.get('/users/{user_id}', tags=['users'], response_model=UserProfileResponse)
@@ -81,40 +151,3 @@ def get_user(
         name = searched_user.name,
         thoughts = thought_list
     )
-
-
-@router.patch('/users/me', tags=['users'], response_model=UserResponse)
-def user_update(
-    user_update: UserUpdate,
-    user: UserBase = Depends(get_current_user), 
-    db: Session = Depends(get_db)
-    ):
-
-    if user_update.new_name is not None: 
-        user.name = user_update.new_name
-    if user_update.is_private is not None:
-        user.is_private = user_update.is_private
-
-    db.commit()
-    db.refresh(user)
-
-    result = UserResponse(
-        id = user.id,
-        email = user.email,
-        name = user.name,
-        is_private = user.is_private
-    )
-
-    return result
-
-
-@router.delete('/users/me', tags=['users'])
-def delete_user(
-    user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    
-    user.is_active = False
-    db.commit()
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
