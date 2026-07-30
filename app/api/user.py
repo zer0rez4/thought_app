@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Header, status, HTTPException, Depends, Response
+from fastapi import APIRouter, status, HTTPException, Depends, Response, Query
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
 from core.dependencies import get_current_user
 from schemas.user import UserUpdate, UserResponse, UserProfileResponse
-from schemas.thoughts import ThoughtResponse
 from database.database import get_db
 from database.models import UserBase, ThoughtBase
 from services.user import get_user_by_id
+from services.thought import (
+    build_thought_list_response, 
+    paginate_query,
+    apply_search
+)
 
 
 router = APIRouter()
@@ -30,7 +34,10 @@ def get_user_me(
 def get_user(
     user_id: int,
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    limit: int = Query(default=20, ge=1, le=20),
+    offset: int = Query(default=0, ge=0),
+    search: str | None = Query(default=None, min_length=1)
     ): 
 
     searched_user = get_user_by_id(db=db, user_id=user_id)
@@ -42,27 +49,33 @@ def get_user(
             )
 
     if searched_user.id == user.id:
-        thoughts = db.query(ThoughtBase).filter(
+        query = db.query(ThoughtBase).filter(
             ThoughtBase.author_id == searched_user.id
-            ).all()
+            )
 
     else:
-        thoughts = db.query(ThoughtBase).filter(
+        query = db.query(ThoughtBase).filter(
             and_(
                 ThoughtBase.author_id == searched_user.id,
                 ThoughtBase.is_public.is_(True)
                 )
-            ).all()
+            )
     
-    thought_list = [
-        ThoughtResponse(
-            id = thought.id,
-            text = thought.text,
-            author = searched_user.name,
-            is_public = thought.is_public
-        )
-        for thought in thoughts
-    ]
+    query = apply_search(query, search)
+
+    thoughts, total = paginate_query(
+        query=query,
+        limit=limit,
+        offset=offset
+    )
+
+    thought_list = build_thought_list_response(
+        thoughts_list=thoughts,
+        user=searched_user,
+        total=total,
+        limit=limit,
+        offset=offset
+    )
 
     return UserProfileResponse(
         name = searched_user.name,

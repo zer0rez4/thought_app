@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
-from schemas.thoughts import ThoughtResponse
+from schemas.thoughts import ThoughtListResponse
 
 
 class UserCreate(BaseModel):
@@ -36,7 +36,7 @@ class UserResponse(BaseModel):
 
 class UserProfileResponse(BaseModel):
     name: str
-    thoughts: list[ThoughtResponse]
+    thoughts: ThoughtListResponse
 
 
 class UserUpdate(BaseModel):
