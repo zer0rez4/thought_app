@@ -24,3 +24,12 @@ def get_user_by_id(
     return user
 
 
+def check_user_active(
+        user: UserBase
+) -> None:
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='account is deleted'
+        )

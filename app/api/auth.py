@@ -6,6 +6,7 @@ from core.security import hash_password, verify_password
 from core.jwt import create_access_token
 from database.database import get_db
 from database.models import UserBase
+from services.user import check_user_active
 
 router = APIRouter()
 
@@ -60,6 +61,8 @@ def login(
             status_code = status.HTTP_404_NOT_FOUND,
             detail = 'User does not exist'
         )
+
+    check_user_active(user=log_user)
 
     password_hash = log_user.hashed_password
 

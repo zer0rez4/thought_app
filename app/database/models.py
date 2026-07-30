@@ -25,5 +25,3 @@ class ThoughtBase(Base):
     author_id = Column(Integer, ForeignKey("users.id"),nullable=False)
     is_public = Column(Boolean)
 
-
-#check

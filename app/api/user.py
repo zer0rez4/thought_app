@@ -7,6 +7,7 @@ from schemas.user import UserUpdate, UserResponse, UserProfileResponse
 from schemas.thoughts import ThoughtResponse
 from database.database import get_db
 from database.models import UserBase, ThoughtBase
+from services.user import get_user_by_id
 
 
 router = APIRouter()
@@ -32,13 +33,7 @@ def get_user(
     db: Session = Depends(get_db)
     ): 
 
-    searched_user = db.query(UserBase).filter(UserBase.id == user_id).first()
-
-    if not searched_user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'user is not exist'
-        )
+    searched_user = get_user_by_id(db=db, user_id=user_id)
 
     if searched_user.is_private and searched_user.id != user.id:
             raise HTTPException(
@@ -98,3 +93,15 @@ def user_update(
     )
 
     return result
+
+
+@router.delete('/users/me', tags=['users'])
+def delete_user(
+    user: UserBase = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    
+    user.is_active = False
+    db.commit()
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

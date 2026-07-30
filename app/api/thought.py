@@ -44,7 +44,12 @@ def thought_create(
 
 @router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
 def random_thought(db: Session = Depends(get_db)):
-    thought = db.query(ThoughtBase).filter(ThoughtBase.is_public.is_(True)).order_by(func.random()).first()
+    thought = (
+        db.query(ThoughtBase)
+        .filter(ThoughtBase.is_public.is_(True))
+        .order_by(func.random())
+        .first()
+    )
 
     if not thought:
         raise HTTPException(
@@ -56,7 +61,7 @@ def random_thought(db: Session = Depends(get_db)):
 
     return build_thought_response(
         thought = thought,
-        author_name = user.name
+        author = user
     )   
 
 
@@ -105,7 +110,7 @@ def thought_get(
 
     return build_thought_response(
         thought = thought,
-        author_name = author.name
+        author = author
     )
 
 
@@ -167,7 +172,7 @@ def change_thought(
 
     return build_thought_response(
         thought = thought,
-        author_name = user.name
+        author = user
     )
 
 

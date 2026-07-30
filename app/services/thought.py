@@ -39,9 +39,15 @@ def check_thought_read_access(
 
 def build_thought_response(
         thought: ThoughtBase, 
-        author_name: str
+        author: UserBase
 ) -> ThoughtResponse:
-    
+
+    author_name = (
+        author.name
+        if author.is_active
+        else "deleted user"
+    )
+
     return ThoughtResponse(
         id = thought.id,
         text = thought.text,
@@ -62,16 +68,16 @@ def build_thought_list_response(
     thoughts = []
 
     for thought in thoughts_list:
-        author_name = (
-            user.name
+        author = (
+            user
             if thought.author_id == user.id
-            else get_user_by_id(db, thought.author_id).name
+            else get_user_by_id(db, thought.author_id)
         )
         
         thoughts.append(
             build_thought_response(
                 thought=thought,
-                author_name=author_name
+                author=author
             )
         )
 

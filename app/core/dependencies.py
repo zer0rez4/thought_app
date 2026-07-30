@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from database.database import get_db
 from database.models import UserBase
 from core.jwt import decode_token
+from services.user import check_user_active, get_user_by_id
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login") 
@@ -31,12 +32,8 @@ def get_current_user(
             detail = 'invalid token payload'
         )
 
-    user_data = db.query(UserBase).filter(UserBase.id == int(user_id)).first()
+    user_data = get_user_by_id(db=db, user_id=user_id)
 
-    if user_data is None:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'user not found'
-        )
+    check_user_active(user=user_data)
 
     return user_data
