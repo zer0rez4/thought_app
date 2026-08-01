@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = 'HS256'
 
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     SQLALCHEMY_DATABASE_URL: str
 

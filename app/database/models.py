@@ -1,5 +1,5 @@
 from sqlalchemy.orm import DeclarativeBase
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 
 
 class Base(DeclarativeBase):
@@ -22,6 +22,16 @@ class ThoughtBase(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     text = Column(String, nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id"),nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     is_public = Column(Boolean)
+
+
+class RefreshTokenBase(Base):
+    __tablename__ = 'refresh_tokens'
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    revoked = Column(Boolean, default=False)
 

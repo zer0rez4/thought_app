@@ -2,16 +2,18 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from schemas.user import UserCreate, UserLogin
+from schemas.token import TokenResponse, RefreshTokenRequest
 from core.security import hash_password, verify_password
-from core.jwt import create_access_token
+from core.jwt import decode_token
 from database.database import get_db
-from database.models import UserBase
+from database.models import UserBase, RefreshTokenBase
 from services.user import check_user_active
+from services.auth import generate_tokens
 
 router = APIRouter()
 
 
-@router.post('/register', tags=['auth'])
+@router.post('/register', tags=['auth'], response_model=TokenResponse)
 def register(
     user: UserCreate, 
     db: Session=Depends(get_db)
@@ -35,20 +37,20 @@ def register(
     )
 
     db.add(new_user)
+    db.flush()
+
+    token_response = generate_tokens(
+        user_id=new_user.id,
+        db=db
+    )
+
     db.commit()
-    db.refresh(new_user)
 
-    to_encode = {'sub': str(new_user.id)}
-    token = create_access_token(to_encode)
-
-    return {
-        'access_token': token,
-        'token_type': "bearer",
-    }
+    return token_response
 
 
 
-@router.post('/login', tags=['auth'])
+@router.post('/login', tags=['auth'], response_model=TokenResponse)
 def login(
     user: UserLogin,
     db: Session=Depends(get_db)
@@ -64,18 +66,85 @@ def login(
 
     check_user_active(user=log_user)
 
-    password_hash = log_user.hashed_password
+    if verify_password(user.password, log_user.hashed_password):
+        token_response = generate_tokens(
+            user_id=log_user.id,
+            db=db
+        )
 
-    if verify_password(user.password, password_hash):
-        to_encode = {'sub': str(log_user.id)}
-        token = create_access_token(to_encode)
+        db.commit()
 
-        return {
-            'access_token': token,
-            'token_type': 'bearer'
-            }
+        return token_response
     else:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
             detail = 'password is incorrect'
         )
+
+
+@router.post('/refresh')
+def refresh(
+    token: RefreshTokenRequest,
+    db: Session=Depends(get_db)
+):
+
+    payload = decode_token(token.refresh_token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = 'invalid token'
+        )
+    
+    if payload.get('type') != 'refresh':
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid token type'
+        )
+
+    refresh_token_db = (
+        db.query(RefreshTokenBase)
+        .filter(RefreshTokenBase.token == token.refresh_token)
+        .first()
+    )
+
+    if refresh_token_db is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid refresh token"
+        )
+
+    if refresh_token_db.revoked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='token is inactive'
+        )
+
+    user_id = payload.get('sub')
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid token'
+        )
+
+    tokens = generate_tokens(
+        user_id=user_id,
+        db=db
+    )
+
+    refresh_token_db.revoked = True
+
+    db.commit()
+    db.refresh(refresh_token_db)
+
+    return tokens
+
+
+@router.post('/logout', tags=['auth'])
+def logout(
+    db: Session = Depends(get_db)
+):
+    
+    pass
+
