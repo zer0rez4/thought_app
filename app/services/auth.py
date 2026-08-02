@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
 
 from core.settings import settings
-from core.jwt import create_access_token, create_refresh_token
+from core.jwt import create_access_token, create_refresh_token, decode_token
 from database.models import RefreshTokenBase
 from schemas.token import TokenResponse
 
@@ -37,3 +38,58 @@ def generate_tokens(
         access_token=access_token,
         refresh_token=refresh_token
     )
+
+
+def validate_refresh_token(
+        token: str,
+        db: Session,
+) -> tuple[int, RefreshTokenBase]:
+    
+    payload = decode_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code = status.HTTP_401_UNAUTHORIZED,
+            detail = 'invalid token'
+        )
+    
+    if payload.get('type') != 'refresh':
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid token type'
+        )
+
+    refresh_token_db = (
+        db.query(RefreshTokenBase)
+        .filter(RefreshTokenBase.token == token)
+        .first()
+    )
+
+    if refresh_token_db is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid refresh token"
+        )
+
+    if refresh_token_db.revoked:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='token is inactive'
+        )
+
+    user_id = payload.get('sub')
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='invalid token'
+        )
+
+    return user_id, refresh_token_db
+
+
+def revoke_refresh_token(
+        refresh_token_db: RefreshTokenBase
+) -> None:
+
+    refresh_token_db.revoked = True

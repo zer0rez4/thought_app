@@ -1,14 +1,16 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Response
 from sqlalchemy.orm import Session
 
 from schemas.user import UserCreate, UserLogin
 from schemas.token import TokenResponse, RefreshTokenRequest
 from core.security import hash_password, verify_password
-from core.jwt import decode_token
 from database.database import get_db
-from database.models import UserBase, RefreshTokenBase
+from database.models import UserBase
 from services.user import check_user_active
-from services.auth import generate_tokens
+from services.auth import (
+    generate_tokens, 
+    validate_refresh_token,
+    revoke_refresh_token)
 
 router = APIRouter()
 
@@ -88,63 +90,39 @@ def refresh(
     db: Session=Depends(get_db)
 ):
 
-    payload = decode_token(token.refresh_token)
-
-    if payload is None:
-        raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = 'invalid token'
-        )
-    
-    if payload.get('type') != 'refresh':
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='invalid token type'
-        )
-
-    refresh_token_db = (
-        db.query(RefreshTokenBase)
-        .filter(RefreshTokenBase.token == token.refresh_token)
-        .first()
+    user_id, refresh_token_db = validate_refresh_token(
+        token=token.refresh_token,
+        db=db
     )
-
-    if refresh_token_db is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="invalid refresh token"
-        )
-
-    if refresh_token_db.revoked:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='token is inactive'
-        )
-
-    user_id = payload.get('sub')
-
-    if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='invalid token'
-        )
 
     tokens = generate_tokens(
         user_id=user_id,
         db=db
     )
 
-    refresh_token_db.revoked = True
+    revoke_refresh_token(refresh_token_db=refresh_token_db)
 
     db.commit()
-    db.refresh(refresh_token_db)
 
     return tokens
 
 
 @router.post('/logout', tags=['auth'])
 def logout(
+    token: RefreshTokenRequest,
     db: Session = Depends(get_db)
 ):
     
-    pass
+    _, refresh_token_db = validate_refresh_token(
+        token=token.refresh_token,
+        db=db
+    )
+
+    revoke_refresh_token(refresh_token_db=refresh_token_db)
+
+    db.commit()
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+    ) 
 
