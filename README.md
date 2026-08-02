@@ -21,21 +21,26 @@ REST API for creating, managing and sharing personal and public thoughts with au
 Thoughts API is a backend application for creating,
 managing and sharing personal and public thoughts.
 
-The project includes user authentication, access control,
-data validation, search and pagination.
+The project includes user authentication, access control, 
+token management, data validation, search and pagination.
 
 
 ## ✨ Features
 
 - User registration and login
 - JWT-based authentication
+- Access and refresh token management
+- Refresh token rotation
+- Logout and logout from all devices
 - Secure password hashing
 - Thought creation and management
 - Public and private thought visibility control
-- User access control
+- User authorization and access control
 - Pagination
 - Text search
 - Request validation
+- Soft account deletion
+- User restoration
 
 ## 🛠 Technologies
 
@@ -55,14 +60,14 @@ data validation, search and pagination.
 The project follows a layered architecture approach:
 ```text
 Client
-|
+   │
 FastAPI Router
-|
+   │
 Service Layer
-|
+   │
 SQLAlchemy ORM
-|
-Database
+   │
+SQLite
 ```
 The application separates API handling, business logic,
 data models and validation schemas.
@@ -75,7 +80,7 @@ thought_app/
 │   │
 │   ├── api/                 # API routes and HTTP handlers
 │   │   ├── auth.py
-│   │   ├── thoughts.py
+│   │   ├── thought.py
 │   │   └── user.py
 │   │
 │   ├── core/                # Application configuration and security
@@ -91,9 +96,11 @@ thought_app/
 │   │
 │   ├── schemas/             # Pydantic schemas for validation
 │   │   ├── thoughts.py
+│   │   ├── token.py
 │   │   └── user.py
 │   │
 │   ├── services/            # Business logic
+│   │   ├── auth.py
 │   │   ├── thought.py
 │   │   └── user.py
 │   │
@@ -109,7 +116,6 @@ The project structure is organized into separate layers with clear responsibilit
 
 - API layer handles HTTP communication
 - Service layer contains business logic
-- Domain layer represents core entities
 - Database layer manages persistence
 - Schema layer handles validation and serialization
 
@@ -121,6 +127,9 @@ The project structure is organized into separate layers with clear responsibilit
 |-|-|-|
 | POST | /register | Create account |
 | POST | /login | Login user |
+| POST | /refresh | Generate new access token using refresh token |
+| POST | /logout | Revoke current refresh token |
+| POST | /logout/all | Revoke all user's refresh tokens |
 
 ### 💭 Thoughts
 
@@ -129,10 +138,10 @@ The project structure is organized into separate layers with clear responsibilit
 | POST | /thoughts | Create thought |
 | GET | /thoughts/random | Get random public thought |
 | GET | /thoughts/my | Get user's thoughts |
-| GET | /thoughts/{id} | Get thought by id |
+| GET | /thoughts/{thought_id} | Get thought by id |
 | GET | /thoughts | Get available thoughts for current user |
-| PATCH | /thoughts/{id} | Update thought |
-| DELETE | /thoughts/{id} | Delete thought |
+| PATCH | /thoughts/{thought_id} | Update thought |
+| DELETE | /thoughts/{thought_id} | Delete thought |
 
 ### 👤 User
 
@@ -142,12 +151,27 @@ The project structure is organized into separate layers with clear responsibilit
 | PATCH | /users/me | Update user |
 | DELETE | /users/me | Delete user |
 | POST | /users/restore | Restore user |
-| GET | /users/{id} | Get user and user's thoughts by id |
+| GET | /users/{user_id} | Get user and user's thoughts by id |
 
 ## 🔐 Security
 
 Implemented:
-- Password hashing using bcrypt
+
+- Password hashing using Passlib and bcrypt
 - JWT authentication
+- Access and refresh token system
+- Refresh token rotation
+- Token revocation
 - Protected endpoints
-- User access control
+- User authorization and access control
+- Soft account deletion
+- Password verification
+
+## 🔄 Token Flow
+
+The application uses JWT-based authentication with access and refresh tokens.
+
+- Access tokens are used for API authorization
+- Refresh tokens are stored in the database
+- Refresh tokens can be revoked during logout
+- Refresh token rotation is used to improve security

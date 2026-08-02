@@ -20,3 +20,5 @@ __pycache__/
 
 # Static type checker
 .mypy_cache/
+
+check.py
