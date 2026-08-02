@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 from schemas.user import UserCreate, UserLogin
 from schemas.token import TokenResponse, RefreshTokenRequest
 from core.security import hash_password, verify_password
+from core.dependencies import get_current_user
 from database.database import get_db
-from database.models import UserBase
+from database.models import UserBase, RefreshTokenBase
 from services.user import check_user_active
 from services.auth import (
     generate_tokens, 
@@ -84,7 +85,7 @@ def login(
         )
 
 
-@router.post('/refresh')
+@router.post('/refresh', response_model=TokenResponse)
 def refresh(
     token: RefreshTokenRequest,
     db: Session=Depends(get_db)
@@ -107,7 +108,7 @@ def refresh(
     return tokens
 
 
-@router.post('/logout', tags=['auth'])
+@router.post('/logout', tags=['auth', 'logout'], response_model=Response)
 def logout(
     token: RefreshTokenRequest,
     db: Session = Depends(get_db)
@@ -126,3 +127,23 @@ def logout(
         status_code=status.HTTP_204_NO_CONTENT,
     ) 
 
+
+@router.post('/logout/all', tags=['auth', 'logout'], response_model=Response)
+def logout_all(
+    user: UserBase = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    db.query(RefreshTokenBase).filter(
+        RefreshTokenBase.user_id == user.id,
+        RefreshTokenBase.revoked.is_(False)
+    ).update(
+        {'revoked': True},
+        synchronize_session=False
+    )
+
+    db.commit()
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )
