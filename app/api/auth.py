@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Response
 from sqlalchemy.orm import Session
 
-from schemas.user import UserCreate, UserLogin
-from schemas.token import TokenResponse, RefreshTokenRequest
-from core.security import hash_password, verify_password
-from core.dependencies import get_current_user
-from database.database import get_db
-from database.models import UserBase, RefreshTokenBase
-from services.user import check_user_active
-from services.auth import (
+from app.schemas.user import UserCreate, UserLogin
+from app.schemas.token import TokenResponse, RefreshTokenRequest
+from app.core.security import hash_password, verify_password
+from app.core.dependencies import get_current_user
+from app.database.database import get_db
+from app.database.models import UserBase, RefreshTokenBase
+from app.services.user import check_user_active
+from app.services.auth import (
     generate_tokens, 
     validate_refresh_token,
     revoke_refresh_token)

@@ -1,7 +1,7 @@
 from jose import jwt, JWTError
 from datetime import datetime
 
-from core.settings import settings
+from app.core.settings import settings
 
 
 def create_access_token(data: dict, expire: datetime) -> str:

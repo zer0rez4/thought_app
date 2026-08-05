@@ -2,12 +2,12 @@ from fastapi import APIRouter, status, HTTPException, Response, Depends, Query
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 
-from schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, ThoughtListResponse
-from database.database import get_db
-from database.models import ThoughtBase, UserBase
-from core.dependencies import get_current_user
-from services.user import get_user_by_id
-from services.thought import (
+from app.schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, ThoughtListResponse
+from app.database.database import get_db
+from app.database.models import ThoughtBase, UserBase
+from app.core.dependencies import get_current_user
+from app.services.user import get_user_by_id
+from app.services.thought import (
     get_thought_by_id, 
     build_thought_response, 
     check_thought_read_access, 

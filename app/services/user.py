@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from database.models import UserBase
+from app.database.models import UserBase
 
 
 def get_user_by_id(

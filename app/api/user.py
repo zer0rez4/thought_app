@@ -2,13 +2,13 @@ from fastapi import APIRouter, status, HTTPException, Depends, Response, Query
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from core.dependencies import get_current_user
-from core.security import verify_password
-from schemas.user import UserUpdate, UserResponse, UserProfileResponse, UserRestore
-from database.database import get_db
-from database.models import UserBase, ThoughtBase
-from services.user import get_user_by_id
-from services.thought import (
+from app.core.dependencies import get_current_user
+from app.core.security import verify_password
+from app.schemas.user import UserUpdate, UserResponse, UserProfileResponse, UserRestore
+from app.database.database import get_db
+from app.database.models import UserBase, ThoughtBase
+from app.services.user import get_user_by_id
+from app.services.thought import (
     build_thought_list_response, 
     paginate_query,
     apply_search

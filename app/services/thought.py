@@ -1,9 +1,9 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, Query
 
-from database.models import ThoughtBase, UserBase
-from schemas.thoughts import ThoughtResponse, ThoughtListResponse
-from services.user import get_user_by_id
+from app.database.models import ThoughtBase, UserBase
+from app.schemas.thoughts import ThoughtResponse, ThoughtListResponse
+from app.services.user import get_user_by_id
 
 
 def get_thought_by_id(

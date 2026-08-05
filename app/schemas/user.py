@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
-from schemas.thoughts import ThoughtListResponse
+from app.schemas.thoughts import ThoughtListResponse
 
 
 class UserCreate(BaseModel):

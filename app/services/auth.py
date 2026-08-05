@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-from core.settings import settings
-from core.jwt import create_access_token, create_refresh_token, decode_token
-from database.models import RefreshTokenBase
-from schemas.token import TokenResponse
+from app.core.settings import settings
+from app.core.jwt import create_access_token, create_refresh_token, decode_token
+from app.database.models import RefreshTokenBase
+from app.schemas.token import TokenResponse
 
 def generate_tokens(
         user_id: int,
