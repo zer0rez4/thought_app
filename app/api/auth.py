@@ -108,7 +108,7 @@ def refresh(
     return tokens
 
 
-@router.post('/logout', tags=['auth', 'logout'], response_model=Response)
+@router.post('/logout', tags=['auth', 'logout'])
 def logout(
     token: RefreshTokenRequest,
     db: Session = Depends(get_db)
@@ -128,7 +128,7 @@ def logout(
     ) 
 
 
-@router.post('/logout/all', tags=['auth', 'logout'], response_model=Response)
+@router.post('/logout/all', tags=['auth', 'logout'])
 def logout_all(
     user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)

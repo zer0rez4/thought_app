@@ -1,6 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file='.env'
+    )
+
     SECRET_KEY: str
     ALGORITHM: str = 'HS256'
 
@@ -8,8 +12,5 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     SQLALCHEMY_DATABASE_URL: str
-
-    class Config:
-        env_file = '.env'
 
 settings = Settings()
