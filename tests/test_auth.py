@@ -1,13 +1,39 @@
+# ---------- SERVICES ----------
+def register_user(
+        client,
+        email="test@gmail.com",
+        password="12345678",
+        name="Test"
+):
+    
+    return client.post(
+        '/register', 
+        json={
+            "email": email,
+            "password": password,
+            "name": name
+        }
+    )
+
+
+def login_user(
+    client,
+    email="test@gmail.com",
+    password="12345678",
+):
+    return client.post(
+        "/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+
 # ---------- REGISTER ----------
 
 def test_register_success(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": "Test"
-    }
-
-    response = client.post('/register', json=user_data)
+    response = register_user(client)
 
     assert response.status_code == 200
 
@@ -21,55 +47,31 @@ def test_register_success(client):
 
 
 def test_register_existing_email(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": "Test"
-    }
-
-    client.post('/register', json=user_data)
-    response = client.post('/register', json=user_data)
+    register_user(client)
+    response = register_user(client)
 
     assert response.status_code == 400
     assert response.json()['detail'] == "User already exists"
 
 
 def test_register_invalid_email(client):
-    user_data = {
-        "email": "just_email",
-        "password": "12345678",
-        "name": "Test"
-    }
-
-    response = client.post('/register', json=user_data)
+    response = register_user(client, email='just_email')
 
     assert response.status_code == 422
 
 
 def test_register_short_password(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "1",
-        "name": "Test"
-    }
-
-    response = client.post('/register', json=user_data)
+    response = register_user(client, password='1')
 
     assert response.status_code == 422
 
 
 def test_register_invalid_name(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": " "
-    }
-
-    response = client.post('/register', json=user_data)
+    response = register_user(client, name=' ')
 
     assert response.status_code == 422
 
-
+# вопрос как удалить из хелпер функции, передать None?
 def test_register_without_name(client):
     user_data = {
         "email": "test@gmail.com",
@@ -84,20 +86,9 @@ def test_register_without_name(client):
 # ---------- LOGIN ----------
 
 def test_login_success(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": "Test"
-    }
+    register_user(client)
 
-    client.post('/register', json=user_data)
-
-    login_data = {
-        "email": "test@gmail.com",
-        "password": "12345678"
-    }
-
-    response = client.post('/login', json=login_data)
+    response = login_user(client)
 
     assert response.status_code == 200
 
@@ -110,49 +101,24 @@ def test_login_success(client):
     assert data["token_type"] == "bearer"
 
 
-#Юзер удален (is_active = False)
-
-
 def test_login_wrong_password(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": "Test"
-    }
+    register_user(client)
 
-    client.post('/register', json=user_data)
-
-    login_data = {
-        "email": "test@gmail.com",
-        "password": "87654321",
-    }
-
-    response = client.post('/login', json=login_data)
+    response = login_user(client, password='87654321')
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'password is incorrect'
 
 
 def test_login_unknown_user(client):
-    login_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-    }
-
-    response = client.post('/login', json=login_data)
+    response = login_user(client)
 
     assert response.status_code == 404
     assert response.json()['detail'] == 'User does not exist'
 
 
 def test_login_deleted_user(client):
-    user_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-        "name": "Test"
-    }
-
-    register_response = client.post('/register', json=user_data)
+    register_response = register_user(client)
     
     access_token = register_response.json()['access_token']
     
@@ -163,13 +129,7 @@ def test_login_deleted_user(client):
             }
         )
 
-
-    login_data = {
-        "email": "test@gmail.com",
-        "password": "12345678",
-    }
-
-    response = client.post('/login', json=login_data)
+    response = login_user(client)
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is deleted'
