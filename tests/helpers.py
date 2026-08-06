@@ -24,6 +24,23 @@ def login_user(client, **kwargs):
 
     return client.post("/login", json=data)
 
+def refresh_user(client, refresh_token):
+    return client.post(
+        "/refresh",
+        json={
+            "refresh_token": refresh_token
+        }
+    )
+
+
+def logout_user(client, refresh_token):
+    return client.post(
+        "/logout",
+        json={
+            "refresh_token": refresh_token
+        }
+    )
+
 
 def assert_tokens(data):
     assert isinstance(data["access_token"], str)
@@ -33,10 +50,9 @@ def assert_tokens(data):
     assert data["token_type"] == "bearer"
 
 
-def refresh_user(client, refresh_token):
-    return client.post(
-        "/refresh",
-        json={
-            "refresh_token": refresh_token
-        }
-    )
+def get_refresh_token(response):
+    return response.json()['refresh_token']
+
+
+def get_access_token(response):
+    return response.json()['access_token']

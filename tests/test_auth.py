@@ -2,8 +2,12 @@ from tests.helpers import (
     register_user,
     login_user,
     assert_tokens,
-    refresh_user
+    refresh_user,
+    logout_user,
+    get_access_token,
+    get_refresh_token
 )
+from app.database.models import RefreshTokenBase
 
 # ---------- REGISTER ----------
 
@@ -78,12 +82,10 @@ def test_login_unknown_user(client):
 def test_login_deleted_user(client):
     register_response = register_user(client)
     
-    access_token = register_response.json()['access_token']
-    
     client.delete(
         '/users/me', 
         headers={
-            "Authorization": f"Bearer {access_token}"
+            "Authorization": f"Bearer {get_access_token(register_response)}"
             }
         )
 
@@ -97,8 +99,8 @@ def test_login_deleted_user(client):
 def test_refresh_success(client):
     register_response = register_user(client)
 
-    old_refresh_token = register_response.json()['refresh_token']
-    old_access_token = register_response.json()['access_token']
+    old_refresh_token = get_refresh_token(register_response)
+    old_access_token = get_access_token(register_response)
 
     response = refresh_user(client, old_refresh_token)
 
@@ -112,7 +114,7 @@ def test_refresh_success(client):
     assert old_access_token != data['access_token']
 
 
-def test_refresh_broken_token(client):
+def test_refresh_invalid_token(client):
     register_user(client)
 
     response = refresh_user(client, "key.broken_refresh.sign")
@@ -131,7 +133,7 @@ def test_refresh_empty_token(client):
 def test_refresh_access_instead_refresh_token(client):
     register_response = register_user(client)
 
-    response = refresh_user(client, register_response.json()['access_token'])
+    response = refresh_user(client, get_access_token(register_response))
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'invalid token type'
@@ -140,10 +142,77 @@ def test_refresh_access_instead_refresh_token(client):
 def test_refresh_with_revoked_token(client):
     register_response = register_user(client)
 
-    refresh_user(client, register_response.json()['refresh_token'])
+    refresh_user(client, get_refresh_token(register_response))
 
-    response = refresh_user(client, register_response.json()['refresh_token'])
+    response = refresh_user(client, get_refresh_token(register_response))
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'token is inactive'
+
+
+def test_logout_then_refresh(client):
+    register_response = register_user(client)
+
+    logout_user(client, get_refresh_token(register_response))
+
+    response = refresh_user(client,  get_refresh_token(register_response))
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == "token is inactive"
+
+# ---------- LOGOUT ----------
+def test_logout_success(client):
+    register_response = register_user(client)
+
+    response = logout_user(client, get_refresh_token(register_response))
+    assert response.status_code == 204
+
+
+def test_logout_twice(client):
+    register_response = register_user(client)
+
+    logout_user(client, get_refresh_token(register_response))
+
+    response = logout_user(client, get_refresh_token(register_response))
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'token is inactive'
+
+
+def test_logout_invalid_token(client):
+    response = logout_user(client, 'key.broken_refresh.sign')
+
+    assert response.status_code == 401
+    assert response.json()['detail'] == 'invalid token'
+
+
+def test_logout_access_token(client):
+    register_response = register_user(client)
+
+    response = logout_user(client, get_access_token(register_response))
+
+    assert response.status_code == 401
+    assert response.json()['detail'] == 'invalid token type'
+
+
+def test_logout_unknown_refresh_token(client, db):
+    register_response = register_user(client)
+
+    refresh_token = get_refresh_token(register_response)
+
+    token = (
+        db.query(RefreshTokenBase)
+        .filter(RefreshTokenBase.token == refresh_token)
+        .first()
+    )
+
+    db.delete(token)
+    db.commit()
+
+    response = logout_user(client, refresh_token)
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "invalid refresh token"
+
+
 
