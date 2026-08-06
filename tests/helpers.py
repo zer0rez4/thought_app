@@ -1,5 +1,6 @@
 from app.database.models import RefreshTokenBase
 
+# ---------- DEFAULT ----------
 DEFAULT_USER = {
     'email': 'test@gmail.com',
     'password': '12345678',
@@ -26,6 +27,20 @@ def login_user(client, **kwargs):
 
     return client.post("/login", json=data)
 
+
+def get_refresh_token(response):
+    return response.json()['refresh_token']
+
+
+def get_access_token(response):
+    return response.json()['access_token']
+
+
+def auth_headers(access_token):
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+# ---------- AUTH ----------
 def refresh_user(client, refresh_token):
     return client.post(
         "/refresh",
@@ -44,25 +59,6 @@ def logout_user(client, refresh_token):
     )
 
 
-def assert_tokens(data):
-    assert isinstance(data["access_token"], str)
-    assert isinstance(data["refresh_token"], str)
-    assert data["access_token"] != ""
-    assert data["refresh_token"] != ""
-    assert data["token_type"] == "bearer"
-
-
-def get_refresh_token(response):
-    return response.json()['refresh_token']
-
-
-def get_access_token(response):
-    return response.json()['access_token']
-
-def auth_headers(access_token):
-    return {"Authorization": f"Bearer {access_token}"}
-
-
 def delete_refresh_token(db, token):
     refresh = (
         db.query(RefreshTokenBase)
@@ -72,3 +68,19 @@ def delete_refresh_token(db, token):
 
     db.delete(refresh)
     db.commit()
+
+
+def assert_tokens(data):
+    assert isinstance(data["access_token"], str)
+    assert isinstance(data["refresh_token"], str)
+    assert data["access_token"] != ""
+    assert data["refresh_token"] != ""
+    assert data["token_type"] == "bearer"
+
+
+# ---------- USERS ----------
+def get_users_me(client, access_token):
+    return client.get(
+        "/users/me",
+        headers=auth_headers(access_token)
+    )

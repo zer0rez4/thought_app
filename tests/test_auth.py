@@ -9,7 +9,6 @@ from tests.helpers import (
     auth_headers,
     delete_refresh_token
 )
-from app.database.models import RefreshTokenBase
 
 # ---------- REGISTER ----------
 
