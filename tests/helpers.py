@@ -1,3 +1,5 @@
+from app.database.models import RefreshTokenBase
+
 DEFAULT_USER = {
     'email': 'test@gmail.com',
     'password': '12345678',
@@ -56,3 +58,17 @@ def get_refresh_token(response):
 
 def get_access_token(response):
     return response.json()['access_token']
+
+def auth_headers(access_token):
+    return {"Authorization": f"Bearer {access_token}"}
+
+
+def delete_refresh_token(db, token):
+    refresh = (
+        db.query(RefreshTokenBase)
+        .filter(RefreshTokenBase.token == token)
+        .first()
+    )
+
+    db.delete(refresh)
+    db.commit()
