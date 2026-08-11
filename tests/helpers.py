@@ -84,3 +84,16 @@ def get_users_me(client, access_token):
         "/users/me",
         headers=auth_headers(access_token)
     )
+
+
+def update_user(client, access_token=None, new_name=None, is_private=None):
+    headers = auth_headers(access_token) if access_token else None
+
+    return client.patch(
+        "/users/me",
+        json={
+            "new_name": new_name,
+            "is_private": is_private
+        },
+        headers=headers
+    )
