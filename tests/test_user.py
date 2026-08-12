@@ -8,7 +8,9 @@ from tests.helpers import (
     logout_user,
     refresh_user,
     get_users_me,
-    update_user
+    update_user,
+    delete_user,
+    restore_user
 )
 from app.database.models import UserBase
 
@@ -209,12 +211,7 @@ def test_users_me_refresh_instead_access(client):
 def test_delete_user_success(client, db):
     register_response = register_user(client)
 
-    access_token = get_access_token(register_response)
-
-    response = client.delete(
-        "/users/me",
-        headers=auth_headers(access_token)
-    )
+    response = delete_user(client, get_access_token(register_response))
 
     assert response.status_code == 204
 
@@ -228,17 +225,9 @@ def test_delete_user_success(client, db):
 def test_delete_user_already_deleted(client):
     register_response = register_user(client)
 
-    access_token = get_access_token(register_response)
+    delete_user(client, get_access_token(register_response))
 
-    client.delete(
-        "/users/me",
-        headers=auth_headers(access_token)
-    )
-
-    response = client.delete(
-        "/users/me",
-        headers=auth_headers(access_token)
-    )
+    response = delete_user(client, get_access_token(register_response))
 
     assert response.status_code == 403
     assert response.json()["detail"] == "account is deleted"
@@ -247,16 +236,55 @@ def test_delete_user_already_deleted(client):
 def test_delete_user_login_after_delete(client):
     register_response = register_user(client)
 
-    access_token = get_access_token(register_response)
-
-    client.delete(
-        "/users/me",
-        headers=auth_headers(access_token)
-    )
+    delete_user(client, get_access_token(register_response))
 
     response = login_user(client)
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is deleted'
 
-    
+
+# ---------- GET USERS/RESTORE ----------
+def test_users_restore_success(client, db):
+    register_response = register_user(client)
+
+    delete_user(client, get_access_token(register_response))
+
+    response = restore_user(client)
+
+    assert response.status_code == 200
+
+    user = db.query(UserBase).filter(
+        UserBase.email == DEFAULT_USER["email"]
+    ).first()
+
+    assert user.is_active is True
+
+
+def test_users_restore_user_not_exist(client):
+    response = restore_user(client)
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'User does not exist'
+
+
+def test_users_restore_user_is_active(client):
+    register_user(client)
+
+    response = restore_user(client)
+
+    assert response.status_code == 409
+    assert response.json()['detail'] == 'account is already active'
+
+
+def test_users_restore_wrong_password(client):
+    register_response = register_user(client)
+
+    delete_user(client, get_access_token(register_response))
+
+    response = restore_user(client, password="wrong_password")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "password is incorrect"
+
+

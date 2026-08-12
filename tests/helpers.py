@@ -97,3 +97,28 @@ def update_user(client, access_token=None, new_name=None, is_private=None):
         },
         headers=headers
     )
+
+
+# def check_deleted_user(client, db):
+#     pass
+
+
+def delete_user(client, access_token):
+    return client.delete(
+        "/users/me",
+        headers=auth_headers(access_token)
+    )
+
+
+def restore_user(client, **kwargs):
+    data = {
+        "email": DEFAULT_USER["email"],
+        "password": DEFAULT_USER["password"],
+    }
+
+    data.update(kwargs)
+
+    return client.post(
+        "/users/restore",
+        json=data
+    )
