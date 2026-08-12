@@ -99,10 +99,6 @@ def update_user(client, access_token=None, new_name=None, is_private=None):
     )
 
 
-# def check_deleted_user(client, db):
-#     pass
-
-
 def delete_user(client, access_token):
     return client.delete(
         "/users/me",
@@ -121,4 +117,16 @@ def restore_user(client, **kwargs):
     return client.post(
         "/users/restore",
         json=data
+    )
+
+
+# ---------- THOUGHTS ----------
+def create_thought(client, access_token, text="TEST TEXT", is_public=True):
+    return client.post(
+        "/thoughts",
+        json={
+            "text": text,
+            "is_public": is_public
+        },
+        headers=auth_headers(access_token)
     )

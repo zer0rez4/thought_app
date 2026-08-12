@@ -38,7 +38,7 @@ def thought_create(
 
     return build_thought_response(
         thought = new_thought,
-        author_name = user.name
+        author = user
     )
 
 

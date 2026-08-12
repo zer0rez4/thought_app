@@ -5,12 +5,15 @@ from tests.helpers import (
     get_access_token,
     get_refresh_token,
     auth_headers,
+    
     logout_user,
     refresh_user,
     get_users_me,
     update_user,
     delete_user,
-    restore_user
+    restore_user,
+
+    create_thought
 )
 from app.database.models import UserBase
 
@@ -244,7 +247,7 @@ def test_delete_user_login_after_delete(client):
     assert response.json()['detail'] == 'account is deleted'
 
 
-# ---------- GET USERS/RESTORE ----------
+# ---------- POST USERS/RESTORE ----------
 def test_users_restore_success(client, db):
     register_response = register_user(client)
 
@@ -288,3 +291,272 @@ def test_users_restore_wrong_password(client):
     assert response.json()["detail"] == "password is incorrect"
 
 
+# ---------- GET USERS/{USER_ID} ----------
+def test_get_users_userid_success(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.com', name="TEST2")
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="PUBLIC THOUGHT 1",
+        is_public=True
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="PUBLIC THOUGHT 2",
+        is_public=True
+    )
+
+    response = client.get(
+        "/users/1", 
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data['name'] == DEFAULT_USER["name"]
+
+    thoughts = data["thoughts"]
+
+    assert thoughts["total"] == 2
+    assert len(thoughts["items"]) == 2
+
+    assert thoughts["items"][0]["text"] == "PUBLIC THOUGHT 1"
+    assert thoughts["items"][1]["text"] == "PUBLIC THOUGHT 2"
+
+
+def test_get_users_userid_wrong_id(client):
+    register_response = register_user(client)
+
+    response = client.get(
+        "/users/2",
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'user not found'
+
+
+def test_get_users_userid_private_account(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.com', name="TEST2")
+
+    update_user(
+        client,
+        get_access_token(register_response1),
+        is_private=True
+    )
+
+    response = client.get(
+        "/users/1",
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'account is private'
+
+
+def test_get_users_userid_private_account_owner(client):
+    register_response = register_user(client)
+
+    update_user(
+        client,
+        get_access_token(register_response),
+        is_private=True
+    )
+
+    response = client.get(
+        "/users/1",
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 200
+
+
+def test_get_users_userid_check_only_public_thoughts(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.ru')
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        is_public=False
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1)
+    )
+
+    response = client.get(
+        "/users/1",
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 1
+    assert len(thoughts["items"]) == 1
+    assert thoughts["items"][0]["is_public"] == True
+
+
+def test_get_users_userid_public_private_owner(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+    
+    create_thought(
+        client,
+        access_token,
+        is_public=False
+    )
+
+    create_thought(
+        client,
+        access_token
+    )
+
+    response = client.get(
+        "/users/1",
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 2
+    assert len(thoughts["items"]) == 2
+
+
+def test_get_users_userid_user_without_thoughts(client):
+    register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.ru')
+
+    response = client.get(
+        "/users/1",
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 0
+    assert len(thoughts["items"]) == 0
+
+
+def test_get_users_userid_search(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.ru')
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="search check"
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="SEARCH check"
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="TEST"
+    )
+
+    response = client.get(
+        "/users/1",
+        params={
+            "search": "search"
+        },
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 2
+    assert len(thoughts["items"]) == 2
+
+    assert thoughts["items"][0]["text"] == "search check"
+    assert thoughts["items"][1]["text"] == "SEARCH check"
+
+
+def test_get_users_userid_search_no_results(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='TEST2@gmail.ru')
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="search check"
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="SEARCH check"
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response1),
+        text="TEST"
+    )
+
+    response = client.get(
+        "/users/1",
+        params={
+            "search": "fortnite"
+        },
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 0
+    assert len(thoughts["items"]) == 0
+
+
+def test_get_users_userid_pagination(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    for _ in range(5):
+        create_thought(
+            client,
+            access_token
+        )
+
+    response = client.get(
+        "/users/1",
+        params={
+            "limit": 2,
+            "offset": 2
+        },
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    thoughts = response.json()["thoughts"]
+
+    assert thoughts["total"] == 5
+    assert thoughts["items"][0]["id"] == 3
+    assert thoughts["items"][1]["id"] == 4
+    assert thoughts["has_next"] is True
