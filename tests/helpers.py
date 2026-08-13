@@ -7,6 +7,12 @@ DEFAULT_USER = {
     'name': 'Test'
 }
 
+
+DEFAULT_THOUGHT = {
+    'text': 'deffault test text',
+    'is_public': True
+}
+
 def register_user(client, **kwargs):
     data = DEFAULT_USER.copy()
     data.update(kwargs)
@@ -121,7 +127,7 @@ def restore_user(client, **kwargs):
 
 
 # ---------- THOUGHTS ----------
-def create_thought(client, access_token, text="TEST TEXT", is_public=True):
+def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public=DEFAULT_THOUGHT["is_public"]):
     return client.post(
         "/thoughts",
         json={
