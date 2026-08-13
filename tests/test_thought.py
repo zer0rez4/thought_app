@@ -5,7 +5,8 @@ from tests.helpers import (
     get_access_token,
     delete_user,
 
-    create_thought
+    create_thought,
+    auth_headers
 )
 
 # ---------- POST THOUGHTS ----------
@@ -146,3 +147,79 @@ def test_get_random_thought_with_deleted_user(client):
     assert data["is_public"] is True
 
 
+# ---------- GET THOUGHTS/MY ----------
+def test_get_thoughts_my_success(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(
+        client,
+        access_token
+    )
+
+    create_thought(
+        client,
+        access_token,
+        is_public=False
+    )
+
+    response = client.get(
+        "/thoughts/my",
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["total"] == 2
+
+    items = data["items"]
+
+    assert len(items) == 2
+
+    is_public_list = [items[0]["is_public"], items[1]["is_public"]]
+
+    assert True in is_public_list
+    assert False in is_public_list
+
+
+def test_get_thoughts_my_without_thoughts(client):
+    register_response = register_user(client)
+
+    response = client.get(
+        "/thoughts/my",
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["items"]) == 0
+    assert data["total"] == 0
+
+
+def test_get_thoughts_my_no_other_thoughts(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email="TEST2@gmail.com", name="Test2")
+
+    access_token1 = get_access_token(register_response1)
+    access_token2 = get_access_token(register_response2)
+
+    create_thought(client, access_token1)
+    create_thought(client, access_token2)
+
+    response = client.get(
+        "/thoughts/my",
+        headers=auth_headers(access_token1)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data["items"]) == 1
+    assert data["total"] == 1
+    assert data["items"][0]["author"] == "Test"

@@ -136,3 +136,7 @@ def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public
         },
         headers=auth_headers(access_token)
     )
+
+
+def get_my_thoughts(client, access_token):
+    pass
