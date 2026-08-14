@@ -295,3 +295,109 @@ def test_get_thoughts_thoughtid_private_thought_owner(client):
     assert data['author'] == DEFAULT_USER['name']
     assert data['is_public'] is False
 
+
+# ---------- GET THOUGHTS ----------
+def test_get_thoughts_success(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='Test2@gmail.com')
+
+    create_thought(
+        client, 
+        get_access_token(register_response1)
+    )
+
+    create_thought(
+        client,
+        get_access_token(register_response2)
+    )
+
+    response = client.get(
+        '/thoughts',
+        headers=auth_headers(get_access_token(register_response1))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data['items']) == 2
+    assert data['total'] == 2
+
+
+def test_get_thoughts_no_public_thoughts(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='Test2@gmail.com')
+
+    access_token1 = get_access_token(register_response1)
+
+    create_thought(
+        client, 
+        access_token1,
+        is_public=False
+    )
+
+    create_thought(
+        client,
+        access_token1,
+        is_public=False
+    )
+
+    response = client.get(
+        '/thoughts',
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data['items']) == 0
+    assert data['total'] == 0
+
+
+def test_get_thoughts_private_thoughts_owner(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(
+        client, 
+        access_token,
+        is_public=False
+    )
+
+    create_thought(
+        client,
+        access_token,
+        is_public=False
+    )
+
+    response = client.get(
+        '/thoughts',
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data['items']) == 2
+    assert data['total'] == 2
+
+    assert all(item["is_public"] is False for item in data["items"])
+
+
+def test_get_thoughts_no_thoughts(client):
+    register_response = register_user(client)
+
+    response = client.get(
+        '/thoughts',
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data['items']) == 0
+    assert data['total'] == 0
