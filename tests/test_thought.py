@@ -4,9 +4,10 @@ from tests.helpers import (
     register_user,
     get_access_token,
     delete_user,
+    auth_headers,
 
     create_thought,
-    auth_headers
+    get_my_thoughts
 )
 
 # ---------- POST THOUGHTS ----------
@@ -164,10 +165,7 @@ def test_get_thoughts_my_success(client):
         is_public=False
     )
 
-    response = client.get(
-        "/thoughts/my",
-        headers=auth_headers(access_token)
-    )
+    response = get_my_thoughts(client, access_token)
 
     assert response.status_code == 200
 
@@ -188,10 +186,7 @@ def test_get_thoughts_my_success(client):
 def test_get_thoughts_my_without_thoughts(client):
     register_response = register_user(client)
 
-    response = client.get(
-        "/thoughts/my",
-        headers=auth_headers(get_access_token(register_response))
-    )
+    response = get_my_thoughts(client, get_access_token(register_response))
 
     assert response.status_code == 200
 
@@ -211,10 +206,7 @@ def test_get_thoughts_my_no_other_thoughts(client):
     create_thought(client, access_token1)
     create_thought(client, access_token2)
 
-    response = client.get(
-        "/thoughts/my",
-        headers=auth_headers(access_token1)
-    )
+    response = get_my_thoughts(client, access_token1)
 
     assert response.status_code == 200
 
@@ -223,3 +215,83 @@ def test_get_thoughts_my_no_other_thoughts(client):
     assert len(data["items"]) == 1
     assert data["total"] == 1
     assert data["items"][0]["author"] == "Test"
+
+
+# ---------- GET THOUGHTS/{THOUGHT_ID} ----------
+def test_get_thoughts_thoughtid_success(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='Test2@gmail.com')
+
+    create_thought(client, get_access_token(register_response1))
+
+    response = client.get(
+        "/thoughts/1",
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data['id'], int)
+    assert data['text'] == DEFAULT_THOUGHT['text']
+    assert data['author'] == DEFAULT_USER['name']
+    assert data['is_public'] is True
+
+
+def test_get_thoughts_thoughtid_wrong_id(client):
+    register_response = register_user(client)
+
+    create_thought(client, get_access_token(register_response))
+
+    response = client.get(
+        "/thoughts/2",
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'thought does not exist'
+
+
+def test_get_thoughts_thoughtid_private_thought(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='Test2@gmail.com')
+
+    create_thought(
+        client, 
+        get_access_token(register_response1),
+        is_public=False
+    )
+
+    response = client.get(
+        "/thoughts/1",
+        headers=auth_headers(get_access_token(register_response2))
+    )
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'user has no rights'
+
+
+def test_get_thoughts_thoughtid_private_thought_owner(client):
+    register_response = register_user(client)
+
+    create_thought(
+        client, 
+        get_access_token(register_response),
+        is_public=False
+    )
+
+    response = client.get(
+        "/thoughts/1",
+        headers=auth_headers(get_access_token(register_response))
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert isinstance(data['id'], int)
+    assert data['text'] == DEFAULT_THOUGHT['text']
+    assert data['author'] == DEFAULT_USER['name']
+    assert data['is_public'] is False
+

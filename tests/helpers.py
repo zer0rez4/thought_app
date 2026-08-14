@@ -138,5 +138,9 @@ def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public
     )
 
 
-def get_my_thoughts(client, access_token):
-    pass
+def get_my_thoughts(client, access_token, **kwargs):
+    return client.get(
+        "/thoughts/my",
+        headers=auth_headers(access_token),
+        params=kwargs
+    )
