@@ -11,6 +11,7 @@ REST API for creating, managing and sharing personal and public thoughts with au
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-green)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)
 ![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)
 ![JWT](https://img.shields.io/badge/Auth-JWT-orange)
 
@@ -18,11 +19,9 @@ REST API for creating, managing and sharing personal and public thoughts with au
 
 ## 📌 About
 
-Thoughts API is a backend application for creating,
-managing and sharing personal and public thoughts.
+Thoughts API is a backend application for creating, managing and sharing personal and public thoughts.
 
-The project includes user authentication, access control, 
-token management, data validation, search and pagination.
+The project includes user authentication, access control, token management, data validation, search, pagination, automated testing and database migrations.
 
 
 ## ✨ Features
@@ -41,6 +40,9 @@ token management, data validation, search and pagination.
 - Request validation
 - Soft account deletion
 - User restoration
+- PostgreSQL database
+- Alembic database migrations
+- Automated tests with Pytest
 
 ## 🛠 Technologies
 
@@ -49,7 +51,10 @@ token management, data validation, search and pagination.
 | Python | Main programming language |
 | FastAPI | REST API development and dependency injection |
 | SQLAlchemy | ORM and database interaction |
+| PostgreSQL | Relational database |
+| Alembic | Database schema migrations |
 | Pydantic | Data validation and serialization |
+| Pytest | Automated testing |
 | Pydantic Settings | Application configuration management |
 | Uvicorn | ASGI server for running the application |
 | python-jose | JWT token generation and validation |
@@ -67,14 +72,18 @@ Service Layer
    │
 SQLAlchemy ORM
    │
-SQLite
+PostgreSQL
 ```
-The application separates API handling, business logic,
-data models and validation schemas.
+The application separates API handling, business logic, data models, validation schemas and database migrations.
 
 ## 📁 Project Structure
 ```text
 thought_app/
+│
+├── alembic/
+│   ├── versions/
+│   ├── env.py
+│   └── script.py.mako
 │
 ├── app/
 │   │
@@ -93,7 +102,6 @@ thought_app/
 │   │   ├── models.py
 │   │   └── database.py
 │   │
-│   │
 │   ├── schemas/             # Pydantic schemas for validation
 │   │   ├── thoughts.py
 │   │   ├── token.py
@@ -104,10 +112,18 @@ thought_app/
 │   │   ├── thought.py
 │   │   └── user.py
 │   │
-│   ├── .env.example
-│   ├── main.py
-│   └── requirements.txt
+│   └── main.py
 │
+├── tests/
+|   │
+│   ├── conftest.py
+│   ├── helpers.py
+│   ├── test_auth.py
+│   └── test_user.py
+│
+├── .env.example
+├── requirements.txt
+├── alembic.ini
 ├── README.md
 └── .gitignore
 ```
@@ -118,6 +134,8 @@ The project structure is organized into separate layers with clear responsibilit
 - Service layer contains business logic
 - Database layer manages persistence
 - Schema layer handles validation and serialization
+- Alembic manages database schema migrations
+- Tests verify application behavior
 
 ## 📡 API Overview
 
@@ -143,7 +161,7 @@ The project structure is organized into separate layers with clear responsibilit
 | PATCH | /thoughts/{thought_id} | Update thought |
 | DELETE | /thoughts/{thought_id} | Delete thought |
 
-### 👤 User
+### 👤 Users
 
 | Method | Endpoint | Description |
 |-|-|-|

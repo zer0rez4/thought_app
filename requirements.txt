@@ -1,3 +1,4 @@
+alembic==1.19.1
 annotated-doc==0.0.4
 annotated-types==0.7.0
 anyio==4.13.0
@@ -18,9 +19,13 @@ httpcore==1.0.9
 httpx==0.28.1
 idna==3.11
 iniconfig==2.3.0
+Mako==1.4.1
+MarkupSafe==3.0.3
 packaging==26.2
 passlib==1.7.4
 pluggy==1.6.0
+psycopg==3.3.4
+psycopg-binary==3.3.4
 pyasn1==0.6.3
 pycparser==3.0
 pydantic==2.12.5
@@ -36,4 +41,5 @@ SQLAlchemy==2.0.48
 starlette==1.0.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
+tzdata==2026.3
 uvicorn==0.42.0
