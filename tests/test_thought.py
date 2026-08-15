@@ -401,3 +401,118 @@ def test_get_thoughts_no_thoughts(client):
 
     assert len(data['items']) == 0
     assert data['total'] == 0
+
+
+# ---------- PATCH THOUGHTS/{THOUGHT_ID} ----------
+def test_patch_thoughts_thoughtid_change_text_success(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    response = client.patch(
+        "/thoughts/1",
+        json={
+            "text": "New test text"
+        },
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["text"] == "New test text"
+    assert data["id"] == 1
+
+
+def test_patch_thoughts_thoughtid_change_is_public_success(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    response = client.patch(
+        "/thoughts/1",
+        json={
+            "is_public": False
+        },
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["is_public"] == False
+    assert data["id"] == 1
+
+
+def test_patch_thoughts_thoughtid_empty_text(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    response = client.patch(
+        "/thoughts/1",
+        json={
+            "text": "   "
+        },
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 422
+
+    data = response.json()
+
+    assert 'Text can not be empty' in data['detail'][0]['msg']\
+
+
+def test_patch_thoughts_thoughtid_another_user(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email="Test2@gmail.com")
+
+    access_token1 = get_access_token(register_response1)
+    access_token2 = get_access_token(register_response2)
+
+    create_thought(client, access_token1)
+
+    response = client.patch(
+        "/thoughts/1",
+        json={
+            "text": "new_text"
+        },
+        headers=auth_headers(access_token2)
+    )
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == "user has no rights"
+
+
+def test_patch_thoughts_thoughtid_with_none_params(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    response = client.patch(
+        "/thoughts/1",
+        json={
+            "text": None,
+            "is_public": None
+        },
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data['text'] == DEFAULT_THOUGHT["text"]
+    assert data['is_public'] == DEFAULT_THOUGHT["is_public"]
+

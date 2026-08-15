@@ -37,6 +37,17 @@ def check_thought_read_access(
         )
 
 
+def check_thought_update_access(
+    thought: ThoughtBase,
+    user: UserBase
+) -> None:
+    if thought.author_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="user has no rights"
+        )
+
+
 def build_thought_response(
         thought: ThoughtBase, 
         author: UserBase

@@ -17,6 +17,17 @@ class UpdateThought(BaseModel):
     text: Optional[str] = None
     is_public: Optional[bool] = None
 
+    @field_validator('text')
+    @classmethod
+    def text_not_empty(cls, text: Optional[str]) -> Optional[str]:
+        if text is None:
+            return None
+
+        text = text.strip()
+
+        if not text:
+            raise ValueError('Text can not be empty')
+        return text
 
 class ThoughtResponse(BaseModel):
     id: int
