@@ -30,7 +30,7 @@ def get_current_user(
             detail='invalid token type'
         )
 
-    user_id = payload.get('sub')
+    user_id = int(payload.get('sub'))
 
     if user_id is None:
         raise HTTPException(

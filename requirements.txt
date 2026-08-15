@@ -21,6 +21,8 @@ iniconfig==2.3.0
 packaging==26.2
 passlib==1.7.4
 pluggy==1.6.0
+psycopg==3.3.4
+psycopg-binary==3.3.4
 pyasn1==0.6.3
 pycparser==3.0
 pydantic==2.12.5
@@ -36,4 +38,5 @@ SQLAlchemy==2.0.48
 starlette==1.0.0
 typing-inspection==0.4.2
 typing_extensions==4.15.0
+tzdata==2026.3
 uvicorn==0.42.0

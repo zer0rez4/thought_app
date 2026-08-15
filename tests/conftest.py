@@ -7,14 +7,10 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database.database import get_db
 from app.database.models import Base
+from app.core.settings import settings
 
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_database.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={'check_same_thread': False}
-)
+engine = create_engine(settings.TEST_SQLALCHENY_DATABASE_URL)
 
 TestingSessionLocal = sessionmaker(
     autocommit=False,

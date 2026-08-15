@@ -12,5 +12,6 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     SQLALCHEMY_DATABASE_URL: str
+    TEST_SQLALCHENY_DATABASE_URL: str
 
 settings = Settings()
