@@ -6,13 +6,15 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database.database import get_db
-from app.database.models import Base
+from app.database.models import Base, UserBase
 from app.core.settings import settings
 
+from tests.helpers.data import DEFAULT_USER
 from tests.helpers.requests import (
     register_user,
     get_access_token,
-    get_refresh_token
+    get_refresh_token,
+    create_thought
 )
 
 
@@ -57,10 +59,47 @@ def client(db):
 
 
 @pytest.fixture(scope="function")
-def registered_user(client):
+def registered_user(client, db):
     response = register_user(client)
 
+    user = db.query(UserBase).filter(
+        UserBase.email == DEFAULT_USER["email"]
+    ).first()
+
     return {
+        "user": user,
         "access_token": get_access_token(response),
         "refresh_token": get_refresh_token(response)
     }
+
+
+@pytest.fixture
+def created_two_users(client, db, registered_user):
+    response = register_user(
+        client,
+        email="test2@gmail.com",
+        name="Test2"
+    )
+
+    user = db.query(UserBase).filter(
+        UserBase.email == "test2@gmail.com"
+    ).first()
+
+    return {
+        "first": registered_user,
+        "second": {
+            "user": user,
+            "access_token": get_access_token(response),
+            "refresh_token": get_refresh_token(response)
+        }
+    }
+
+
+# @pytest.fixture
+# def created_thought(client, registered_user):
+#     response = create_thought(
+#         client,
+#         registered_user["access_token"]
+#     )
+
+#     return response.json()

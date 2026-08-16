@@ -1,11 +1,8 @@
 from tests.helpers.data import DEFAULT_USER
 
 from tests.helpers.requests import (
-    register_user,
     login_user,
     get_access_token,
-    get_refresh_token,
-    auth_headers,
     
     logout_user,
     refresh_user,
@@ -13,6 +10,7 @@ from tests.helpers.requests import (
     update_user,
     delete_user,
     restore_user,
+    get_user,
 
     create_thought
 )
@@ -20,10 +18,8 @@ from tests.helpers.requests import (
 from app.database.models import UserBase
 
 # ---------- GET USERS/ME ----------
-def test_users_me_success(client):
-    register_response = register_user(client)
-
-    response = get_users_me(client, get_access_token(register_response))
+def test_users_me_success(client, registered_user):
+    response = get_users_me(client, registered_user['access_token'])
 
     data = response.json()
 
@@ -41,43 +37,33 @@ def test_users_me_invalid_token(client):
     assert response.json()['detail'] == 'invalid token'
 
 
-def test_users_me_logout_then_usersme(client):
-    register_response = register_user(client)
+def test_users_me_logout_then_usersme(client, registered_user):
+    logout_user(client, registered_user['refresh_token'])
 
-    logout_user(client, get_refresh_token(register_response))
-
-    response = get_users_me(client, get_access_token(register_response))
+    response = get_users_me(client, registered_user['access_token'])
 
     assert response.status_code == 200
 
 
-def test_users_me_refresh_then_usersme(client):
-    register_response = register_user(client)
-
-    refresh_response = refresh_user(client, get_refresh_token(register_response))
+def test_users_me_refresh_then_usersme(client, registered_user):
+    refresh_response = refresh_user(client, registered_user['refresh_token'])
 
     response = get_users_me(client, get_access_token(refresh_response))
 
     assert response.status_code == 200
 
 
-def test_users_me_deleted_user(client):
-    register_response = register_user(client)
+def test_users_me_deleted_user(client, registered_user):
+    delete_user(client, registered_user['access_token'])
 
-    access_token = get_access_token(register_response)
-
-    client.delete("/users/me", headers=auth_headers(access_token))
-
-    response = get_users_me(client, access_token)
+    response = get_users_me(client, registered_user['access_token'])
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is deleted'
 
 
-def test_users_me_refresh_instead(client):
-    register_response = register_user(client)
-
-    response = get_users_me(client, get_refresh_token(register_response))
+def test_users_me_refresh_instead(client, registered_user):
+    response = get_users_me(client, registered_user['refresh_token'])
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'invalid token type'
@@ -91,12 +77,10 @@ def test_users_me_without_authorization(client):
 
 
 # ---------- PATCH USERS/ME ----------
-def test_users_me_change_name_success(client):
-    register_reponse = register_user(client)
-
+def test_users_me_change_name_success(client, registered_user):
     response = update_user(
         client,
-        get_access_token(register_reponse),
+        registered_user['access_token'],
         new_name="new_name_test"
     )
 
@@ -105,15 +89,13 @@ def test_users_me_change_name_success(client):
     data = response.json()
 
     assert data["name"] == "new_name_test"
-    assert data["is_private"] == False
+    assert data["is_private"] is False
 
 
-def test_users_me_change_privaty_success(client):
-    register_reponse = register_user(client)
-
+def test_users_me_change_privacy_success(client, registered_user):
     response = update_user(
         client,
-        get_access_token(register_reponse),
+        registered_user['access_token'],
         is_private=True
     )
 
@@ -122,15 +104,13 @@ def test_users_me_change_privaty_success(client):
     data = response.json()
 
     assert data["name"] == DEFAULT_USER["name"]
-    assert data["is_private"] == True
+    assert data["is_private"] is True
 
 
-def test_users_me_change_name_and_privaty_success(client):
-    register_reponse = register_user(client)
-
+def test_users_me_change_name_and_privacy_success(client, registered_user):
     response = update_user(
         client,
-        get_access_token(register_reponse),
+        registered_user['access_token'],
         new_name="new_name_test",
         is_private=True
     )
@@ -140,15 +120,13 @@ def test_users_me_change_name_and_privaty_success(client):
     data = response.json()
 
     assert data["name"] == "new_name_test"
-    assert data["is_private"] == True
+    assert data["is_private"] is True
 
 
-def test_users_me_update_without_changes(client):
-    register_reponse = register_user(client)
-
+def test_users_me_update_without_changes(client, registered_user):
     response = update_user(
         client,
-        get_access_token(register_reponse)
+        registered_user['access_token']
     )
 
     assert response.status_code == 200
@@ -156,15 +134,13 @@ def test_users_me_update_without_changes(client):
     data = response.json()
 
     assert data["name"] == DEFAULT_USER["name"]
-    assert data["is_private"] == False
+    assert data["is_private"] is False
 
 
-def test_users_me_invalid_name(client):
-    register_reponse = register_user(client)
-
+def test_users_me_invalid_name(client, registered_user):
     response = update_user(
         client, 
-        get_access_token(register_reponse),
+        registered_user['access_token'],
         new_name="    "
     )
 
@@ -176,12 +152,10 @@ def test_users_me_invalid_name(client):
     assert "The name can not be empty" in error["msg"]
 
 
-def test_users_me_invalid_is_private(client):
-    register_reponse = register_user(client)
-
+def test_users_me_invalid_is_private(client, registered_user):
     response = update_user(
         client,
-        get_access_token(register_reponse),
+        registered_user['access_token'],
         is_private="not_boolean"
     )
 
@@ -200,12 +174,10 @@ def test_users_me_without_auth(client):
     assert response.json()['detail'] == 'Not authenticated'
 
 
-def test_users_me_refresh_instead_access(client):
-    register_response = register_user(client)
-
+def test_users_me_refresh_instead_access(client, registered_user):
     response = update_user(
         client,
-        get_refresh_token(register_response)
+        registered_user['refresh_token']
     )
 
     assert response.status_code == 401
@@ -213,35 +185,31 @@ def test_users_me_refresh_instead_access(client):
 
 
 # ---------- DELETE USERS/ME ----------
-def test_delete_user_success(client, db):
-    register_response = register_user(client)
-
-    response = delete_user(client, get_access_token(register_response))
+def test_delete_user_success(client, db, registered_user):
+    response = delete_user(client, registered_user['access_token'])
 
     assert response.status_code == 204
 
+    db.expire_all()
+
     user = db.query(UserBase).filter(
-        UserBase.email == DEFAULT_USER["email"]
+        UserBase.id == registered_user["user"].id
     ).first()
 
     assert user.is_active is False
 
 
-def test_delete_user_already_deleted(client):
-    register_response = register_user(client)
+def test_delete_user_already_deleted(client, registered_user):
+    delete_user(client, registered_user['access_token'])
 
-    delete_user(client, get_access_token(register_response))
-
-    response = delete_user(client, get_access_token(register_response))
+    response = delete_user(client, registered_user['access_token'])
 
     assert response.status_code == 403
     assert response.json()["detail"] == "account is deleted"
 
 
-def test_delete_user_login_after_delete(client):
-    register_response = register_user(client)
-
-    delete_user(client, get_access_token(register_response))
+def test_delete_user_login_after_delete(client, registered_user):
+    delete_user(client, registered_user['access_token'])
 
     response = login_user(client)
 
@@ -250,10 +218,8 @@ def test_delete_user_login_after_delete(client):
 
 
 # ---------- POST USERS/RESTORE ----------
-def test_users_restore_success(client, db):
-    register_response = register_user(client)
-
-    delete_user(client, get_access_token(register_response))
+def test_users_restore_success(client, db, registered_user):
+    delete_user(client, registered_user['access_token'])
 
     response = restore_user(client)
 
@@ -273,19 +239,15 @@ def test_users_restore_user_not_exist(client):
     assert response.json()['detail'] == 'User does not exist'
 
 
-def test_users_restore_user_is_active(client):
-    register_user(client)
-
+def test_users_restore_user_is_active(client, registered_user):
     response = restore_user(client)
 
     assert response.status_code == 409
     assert response.json()['detail'] == 'account is already active'
 
 
-def test_users_restore_wrong_password(client):
-    register_response = register_user(client)
-
-    delete_user(client, get_access_token(register_response))
+def test_users_restore_wrong_password(client, registered_user):
+    delete_user(client, registered_user['access_token'])
 
     response = restore_user(client, password="wrong_password")
 
@@ -294,27 +256,25 @@ def test_users_restore_wrong_password(client):
 
 
 # ---------- GET USERS/{USER_ID} ----------
-def test_get_users_userid_success(client):
-    register_response1 = register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.com', name="TEST2")
-
+def test_get_users_userid_success(client, created_two_users):
     create_thought(
         client,
-        get_access_token(register_response1),
+        created_two_users["first"]["access_token"],
         text="PUBLIC THOUGHT 1",
         is_public=True
     )
 
     create_thought(
         client,
-        get_access_token(register_response1),
+        created_two_users["first"]["access_token"],
         text="PUBLIC THOUGHT 2",
         is_public=True
     )
 
-    response = client.get(
-        "/users/1", 
-        headers=auth_headers(get_access_token(register_response2))
+    response = get_user(
+        client, 
+        created_two_users["second"]["access_token"],
+        user_id=created_two_users["first"]["user"].id
     )
 
     assert response.status_code == 200
@@ -332,72 +292,66 @@ def test_get_users_userid_success(client):
     assert thoughts["items"][1]["text"] == "PUBLIC THOUGHT 2"
 
 
-def test_get_users_userid_wrong_id(client):
-    register_response = register_user(client)
-
-    response = client.get(
-        "/users/2",
-        headers=auth_headers(get_access_token(register_response))
+def test_get_users_userid_wrong_id(client, registered_user):
+    response = get_user(
+        client,
+        registered_user['access_token'],
+        user_id=9999
     )
 
     assert response.status_code == 404
     assert response.json()['detail'] == 'user not found'
 
 
-def test_get_users_userid_private_account(client):
-    register_response1 = register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.com', name="TEST2")
-
+def test_get_users_userid_private_account(client, created_two_users):
     update_user(
         client,
-        get_access_token(register_response1),
+        created_two_users['first']['access_token'],
         is_private=True
     )
 
-    response = client.get(
-        "/users/1",
-        headers=auth_headers(get_access_token(register_response2))
+    response = get_user(
+        client, 
+        created_two_users['second']['access_token'],
+        user_id=created_two_users['first']['user'].id
     )
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is private'
 
 
-def test_get_users_userid_private_account_owner(client):
-    register_response = register_user(client)
-
+def test_get_users_userid_private_account_owner(client, registered_user):
     update_user(
         client,
-        get_access_token(register_response),
+        registered_user['access_token'],
         is_private=True
     )
 
-    response = client.get(
-        "/users/1",
-        headers=auth_headers(get_access_token(register_response))
+    response = get_user(
+        client,
+        registered_user['access_token'],
+        user_id=registered_user['user'].id
     )
 
     assert response.status_code == 200
 
 
-def test_get_users_userid_check_only_public_thoughts(client):
-    register_response1 = register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.ru')
-
+def test_get_users_userid_check_only_public_thoughts(client, created_two_users):
     create_thought(
         client,
-        get_access_token(register_response1),
+        created_two_users['first']['access_token'],
         is_public=False
     )
 
     create_thought(
         client,
-        get_access_token(register_response1)
+        created_two_users['first']['access_token']
     )
 
-    response = client.get(
-        "/users/1",
-        headers=auth_headers(get_access_token(register_response2))
+    response = get_user(
+        client,
+        created_two_users['second']['access_token'],
+        user_id=created_two_users['first']['user'].id
     )
 
     assert response.status_code == 200
@@ -406,13 +360,11 @@ def test_get_users_userid_check_only_public_thoughts(client):
 
     assert thoughts["total"] == 1
     assert len(thoughts["items"]) == 1
-    assert thoughts["items"][0]["is_public"] == True
+    assert thoughts["items"][0]["is_public"] is True
 
 
-def test_get_users_userid_public_private_owner(client):
-    register_response = register_user(client)
-
-    access_token = get_access_token(register_response)
+def test_get_users_userid_public_private_owner(client, registered_user):
+    access_token = registered_user['access_token']
     
     create_thought(
         client,
@@ -425,9 +377,10 @@ def test_get_users_userid_public_private_owner(client):
         access_token
     )
 
-    response = client.get(
-        "/users/1",
-        headers=auth_headers(access_token)
+    response = get_user(
+        client, 
+        access_token,
+        user_id=registered_user['user'].id
     )
 
     assert response.status_code == 200
@@ -438,13 +391,11 @@ def test_get_users_userid_public_private_owner(client):
     assert len(thoughts["items"]) == 2
 
 
-def test_get_users_userid_user_without_thoughts(client):
-    register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.ru')
-
-    response = client.get(
-        "/users/1",
-        headers=auth_headers(get_access_token(register_response2))
+def test_get_users_userid_user_without_thoughts(client, created_two_users):
+    response = get_user(
+        client,
+        created_two_users['second']['access_token'],
+        user_id=created_two_users['first']['user'].id
     )
 
     assert response.status_code == 200
@@ -455,34 +406,21 @@ def test_get_users_userid_user_without_thoughts(client):
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_search(client):
-    register_response1 = register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.ru')
+def test_get_users_userid_search(client, created_two_users):
+    access_token = created_two_users['first']['access_token']
 
-    create_thought(
+    for thought_text in ["search check", "SEARCH check", "TEST"]:
+        create_thought(
+            client,
+            access_token,
+            text=thought_text
+        )
+
+    response = get_user(
         client,
-        get_access_token(register_response1),
-        text="search check"
-    )
-
-    create_thought(
-        client,
-        get_access_token(register_response1),
-        text="SEARCH check"
-    )
-
-    create_thought(
-        client,
-        get_access_token(register_response1),
-        text="TEST"
-    )
-
-    response = client.get(
-        "/users/1",
-        params={
-            "search": "search"
-        },
-        headers=auth_headers(get_access_token(register_response2))
+        created_two_users['second']['access_token'],
+        user_id=created_two_users['first']['user'].id,
+        search="search"
     )
 
     assert response.status_code == 200
@@ -496,34 +434,21 @@ def test_get_users_userid_search(client):
     assert thoughts["items"][1]["text"] == "SEARCH check"
 
 
-def test_get_users_userid_search_no_results(client):
-    register_response1 = register_user(client)
-    register_response2 = register_user(client, email='TEST2@gmail.ru')
+def test_get_users_userid_search_no_results(client, created_two_users):
+    access_token = created_two_users['first']['access_token']
 
-    create_thought(
+    for thought_text in ["search check", "SEARCH check", "TEST"]:
+        create_thought(
+            client,
+            access_token,
+            text=thought_text
+        )
+
+    response = get_user(
         client,
-        get_access_token(register_response1),
-        text="search check"
-    )
-
-    create_thought(
-        client,
-        get_access_token(register_response1),
-        text="SEARCH check"
-    )
-
-    create_thought(
-        client,
-        get_access_token(register_response1),
-        text="TEST"
-    )
-
-    response = client.get(
-        "/users/1",
-        params={
-            "search": "fortnite"
-        },
-        headers=auth_headers(get_access_token(register_response2))
+        created_two_users['second']['access_token'],
+        user_id=created_two_users['first']['user'].id,
+        search="fortnite"
     )
 
     assert response.status_code == 200
@@ -534,10 +459,8 @@ def test_get_users_userid_search_no_results(client):
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_pagination(client):
-    register_response = register_user(client)
-
-    access_token = get_access_token(register_response)
+def test_get_users_userid_pagination(client, registered_user):
+    access_token = registered_user['access_token']
 
     for _ in range(5):
         create_thought(
@@ -545,13 +468,12 @@ def test_get_users_userid_pagination(client):
             access_token
         )
 
-    response = client.get(
-        "/users/1",
-        params={
-            "limit": 2,
-            "offset": 2
-        },
-        headers=auth_headers(access_token)
+    response = get_user(
+        client,
+        access_token,
+        user_id=registered_user['user'].id,
+        limit=2,
+        offset=2
     )
 
     assert response.status_code == 200

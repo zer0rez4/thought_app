@@ -108,6 +108,14 @@ def restore_user(client, **kwargs):
     )
 
 
+def get_user(client, access_token, user_id, **kwargs):
+    return client.get(
+        f"/users/{user_id}",
+        params=kwargs,
+        headers=auth_headers(access_token)
+    )
+
+
 # ---------- THOUGHTS ----------
 def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public=DEFAULT_THOUGHT["is_public"]):
     return client.post(
