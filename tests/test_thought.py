@@ -1,11 +1,10 @@
-from tests.helpers import (
-    DEFAULT_USER,
-    DEFAULT_THOUGHT,
+from tests.helpers.data import DEFAULT_USER, DEFAULT_THOUGHT
+
+from tests.helpers.requests import (
     register_user,
     get_access_token,
     delete_user,
     auth_headers,
-
     create_thought,
     get_my_thoughts
 )

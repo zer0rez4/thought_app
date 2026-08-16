@@ -9,8 +9,8 @@ from app.database.database import get_db
 from app.database.models import Base
 from app.core.settings import settings
 
-from tests.helpers import (
-    register_user, 
+from tests.helpers.requests import (
+    register_user,
     get_access_token,
     get_refresh_token
 )

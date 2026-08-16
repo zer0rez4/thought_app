@@ -1,7 +1,6 @@
-from tests.helpers import (
+from tests.helpers.requests import (
     register_user,
     login_user,
-    assert_tokens,
     refresh_user,
     logout_user,
     get_access_token,
@@ -9,6 +8,8 @@ from tests.helpers import (
     auth_headers,
     delete_refresh_token_from_db
 )
+
+from tests.helpers.assertions import assert_tokens
 
 # ---------- REGISTER ----------
 

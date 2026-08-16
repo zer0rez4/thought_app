@@ -1,5 +1,6 @@
-from tests.helpers import (
-    DEFAULT_USER,
+from tests.helpers.data import DEFAULT_USER
+
+from tests.helpers.requests import (
     register_user,
     login_user,
     get_access_token,
@@ -15,6 +16,7 @@ from tests.helpers import (
 
     create_thought
 )
+
 from app.database.models import UserBase
 
 # ---------- GET USERS/ME ----------
