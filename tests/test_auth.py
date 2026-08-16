@@ -7,7 +7,7 @@ from tests.helpers import (
     get_access_token,
     get_refresh_token,
     auth_headers,
-    delete_refresh_token
+    delete_refresh_token_from_db
 )
 
 # ---------- REGISTER ----------
@@ -145,7 +145,7 @@ def test_refresh_unknown_refresh_token(client, db):
 
     refresh_token = get_refresh_token(register_response)
 
-    delete_refresh_token(db, refresh_token)
+    delete_refresh_token_from_db(db, refresh_token)
 
     response = refresh_user(client, refresh_token)
 
@@ -203,7 +203,7 @@ def test_logout_unknown_refresh_token(client, db):
 
     refresh_token = get_refresh_token(register_response)
 
-    delete_refresh_token(db, refresh_token)
+    delete_refresh_token_from_db(db, refresh_token)
 
     response = logout_user(client, refresh_token)
 

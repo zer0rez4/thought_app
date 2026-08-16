@@ -65,7 +65,7 @@ def logout_user(client, refresh_token):
     )
 
 
-def delete_refresh_token(db, token):
+def delete_refresh_token_from_db(db, token):
     refresh = (
         db.query(RefreshTokenBase)
         .filter(RefreshTokenBase.token == token)

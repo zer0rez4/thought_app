@@ -9,10 +9,16 @@ from app.database.database import get_db
 from app.database.models import Base
 from app.core.settings import settings
 
+from tests.helpers import (
+    register_user, 
+    get_access_token,
+    get_refresh_token
+)
+
 
 engine = create_engine(settings.TEST_SQLALCHENY_DATABASE_URL)
 
-TestingSessionLocal = sessionmaker(
+TestSessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine
@@ -23,7 +29,7 @@ TestingSessionLocal = sessionmaker(
 def db():
     Base.metadata.create_all(bind=engine)
 
-    db = TestingSessionLocal()
+    db = TestSessionLocal()
 
     try:
         yield db
@@ -33,7 +39,7 @@ def db():
 
 
 def override_get_db():
-    db = TestingSessionLocal()
+    db = TestSessionLocal()
     try:
         yield db
     finally:
@@ -48,3 +54,13 @@ def client(db):
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def registered_user(client):
+    response = register_user(client)
+
+    return {
+        "access_token": get_access_token(response),
+        "refresh_token": get_refresh_token(response)
+    }

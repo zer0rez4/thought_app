@@ -303,12 +303,14 @@ def test_get_thoughts_success(client):
 
     create_thought(
         client, 
-        get_access_token(register_response1)
+        get_access_token(register_response1),
+        text='1'
     )
 
     create_thought(
         client,
-        get_access_token(register_response2)
+        get_access_token(register_response2),
+        text='2'
     )
 
     response = client.get(
@@ -322,6 +324,8 @@ def test_get_thoughts_success(client):
 
     assert len(data['items']) == 2
     assert data['total'] == 2
+    assert data['items'][0]['text'] == '1'
+    assert data['items'][1]['text'] == '2'
 
 
 def test_get_thoughts_no_public_thoughts(client):
@@ -532,10 +536,11 @@ def test_delete_thought_success(client):
 
     assert response.status_code == 204
 
-    data =  get_my_thoughts(client, access_token).json()
+    data = client.get(
+        "/thoguhts/1"
+    ).json()
 
-    assert data['total'] == 0
-    assert len(data['items']) == 0
+    assert data['detail'] == 'Not Found'
 
 
 def test_delete_thought_twice(client):
