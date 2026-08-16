@@ -404,7 +404,7 @@ def test_get_thoughts_no_thoughts(client):
 
 
 # ---------- PATCH THOUGHTS/{THOUGHT_ID} ----------
-def test_patch_thoughts_thoughtid_change_text_success(client):
+def test_patch_thought_change_text_success(client):
     register_response = register_user(client)
 
     access_token = get_access_token(register_response)
@@ -427,7 +427,7 @@ def test_patch_thoughts_thoughtid_change_text_success(client):
     assert data["id"] == 1
 
 
-def test_patch_thoughts_thoughtid_change_is_public_success(client):
+def test_patch_thought_change_is_public_success(client):
     register_response = register_user(client)
 
     access_token = get_access_token(register_response)
@@ -450,7 +450,7 @@ def test_patch_thoughts_thoughtid_change_is_public_success(client):
     assert data["id"] == 1
 
 
-def test_patch_thoughts_thoughtid_empty_text(client):
+def test_patch_thought_empty_text(client):
     register_response = register_user(client)
 
     access_token = get_access_token(register_response)
@@ -472,7 +472,7 @@ def test_patch_thoughts_thoughtid_empty_text(client):
     assert 'Text can not be empty' in data['detail'][0]['msg']\
 
 
-def test_patch_thoughts_thoughtid_another_user(client):
+def test_patch_thought_another_user(client):
     register_response1 = register_user(client)
     register_response2 = register_user(client, email="Test2@gmail.com")
 
@@ -493,7 +493,7 @@ def test_patch_thoughts_thoughtid_another_user(client):
     assert response.json()['detail'] == "user has no rights"
 
 
-def test_patch_thoughts_thoughtid_with_none_params(client):
+def test_patch_thought_with_none_params(client):
     register_response = register_user(client)
 
     access_token = get_access_token(register_response)
@@ -516,3 +516,62 @@ def test_patch_thoughts_thoughtid_with_none_params(client):
     assert data['text'] == DEFAULT_THOUGHT["text"]
     assert data['is_public'] == DEFAULT_THOUGHT["is_public"]
 
+
+# ---------- DELETE THOUGHTS/{THOUGHT_ID} ----------
+def test_delete_thought_success(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    response = client.delete(
+        "/thoughts/1",
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 204
+
+    data =  get_my_thoughts(client, access_token).json()
+
+    assert data['total'] == 0
+    assert len(data['items']) == 0
+
+
+def test_delete_thought_twice(client):
+    register_response = register_user(client)
+
+    access_token = get_access_token(register_response)
+
+    create_thought(client, access_token)
+
+    client.delete(
+        "/thoughts/1",
+        headers=auth_headers(access_token)
+    )
+
+    response = client.delete(
+        "/thoughts/1",
+        headers=auth_headers(access_token)
+    )
+
+    assert response.status_code == 404
+    assert response.json()['detail'] == 'thought does not exist'
+
+
+def test_delete_thought_another_user(client):
+    register_response1 = register_user(client)
+    register_response2 = register_user(client, email='Test2@gmail.com') 
+
+    access_token1 = get_access_token(register_response1)
+    access_token2 = get_access_token(register_response2)
+
+    create_thought(client, access_token1)
+
+    response = client.delete(
+        "thoughts/1",
+        headers=auth_headers(access_token2)
+    )
+
+    assert response.status_code == 403
+    assert response.json()['detail'] == 'user has no rights'

@@ -11,7 +11,7 @@ from app.services.thought import (
     get_thought_by_id, 
     build_thought_response, 
     check_thought_read_access,
-    check_thought_update_access,
+    check_thought_change_access,
     build_thought_list_response, 
     paginate_query, apply_search
 )
@@ -159,9 +159,8 @@ def change_thought(
 
     thought = get_thought_by_id(db=db, thought_id=thought_id)
     
-    check_thought_update_access(thought=thought, user=user)
+    check_thought_change_access(thought=thought, user=user)
 
-    
     if thought_update.text is not None:
         thought.text = thought_update.text
 
@@ -186,8 +185,8 @@ def delete_thought(
 
     thought = get_thought_by_id(db=db, thought_id=thought_id)
 
-    check_thought_read_access(thought = thought, user = user)
-
+    check_thought_change_access(thought=thought, user=user)
+    
     db.delete(thought)
     db.commit()
 

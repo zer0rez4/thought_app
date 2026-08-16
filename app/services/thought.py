@@ -37,7 +37,7 @@ def check_thought_read_access(
         )
 
 
-def check_thought_update_access(
+def check_thought_change_access(
     thought: ThoughtBase,
     user: UserBase
 ) -> None:
