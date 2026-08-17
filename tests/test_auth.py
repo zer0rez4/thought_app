@@ -54,7 +54,6 @@ def test_register_without_name(client):
 
 
 # ---------- LOGIN ----------
-
 def test_login_success(client):
     register_user(client)
 

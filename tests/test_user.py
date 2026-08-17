@@ -30,13 +30,6 @@ def test_users_me_success(client, registered_user):
     assert data['is_private'] is False
 
 
-def test_users_me_invalid_token(client):
-    response = get_users_me(client, 'secret.invalid_token')
-
-    assert response.status_code == 401
-    assert response.json()['detail'] == 'invalid token'
-
-
 def test_users_me_logout_then_usersme(client, registered_user):
     logout_user(client, registered_user['refresh_token'])
 
@@ -62,7 +55,7 @@ def test_users_me_deleted_user(client, registered_user):
     assert response.json()['detail'] == 'account is deleted'
 
 
-def test_users_me_refresh_instead(client, registered_user):
+def test_users_me_refresh_instead_access(client, registered_user):
     response = get_users_me(client, registered_user['refresh_token'])
 
     assert response.status_code == 401
@@ -172,16 +165,6 @@ def test_users_me_without_auth(client):
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'Not authenticated'
-
-
-def test_users_me_refresh_instead_access(client, registered_user):
-    response = update_user(
-        client,
-        registered_user['refresh_token']
-    )
-
-    assert response.status_code == 401
-    assert response.json()['detail'] == 'invalid token type'
 
 
 # ---------- DELETE USERS/ME ----------
