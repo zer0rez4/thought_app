@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database.database import get_db
-from app.database.models import Base, UserBase
+from app.database.models import Base, UserBase, ThoughtBase
 from app.core.settings import settings
 
 from tests.helpers.data import DEFAULT_USER
@@ -95,11 +95,11 @@ def created_two_users(client, db, registered_user):
     }
 
 
-# @pytest.fixture
-# def created_thought(client, registered_user):
-#     response = create_thought(
-#         client,
-#         registered_user["access_token"]
-#     )
+@pytest.fixture
+def created_thought_response(client, registered_user):
+    response = create_thought(
+        client,
+        registered_user["access_token"]
+    )
 
-#     return response.json()
+    return response

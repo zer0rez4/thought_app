@@ -134,3 +134,39 @@ def get_my_thoughts(client, access_token, **kwargs):
         headers=auth_headers(access_token),
         params=kwargs
     )
+
+
+def get_thought(client, access_token, thought_id, **kwargs):
+    return client.get(
+        f"/thoughts/{thought_id}",
+        params=kwargs,
+        headers=auth_headers(access_token)
+    )
+
+
+def get_thoughts(client, access_token, **kwargs):
+    return client.get(
+        "/thoughts",
+        params=kwargs,
+        headers=auth_headers(access_token)
+    )
+
+
+def update_thought(client, access_token, thought_id, text=None, is_public=None):
+    headers = auth_headers(access_token) if access_token else None
+
+    return client.patch(
+        f"/thoughts/{thought_id}",
+        json={
+            "text": text,
+            "is_public": is_public
+        },
+        headers=headers
+    )
+
+
+def delete_thought(client, access_token, thought_id):
+    return client.delete(
+        f"/thoughts/{thought_id}",
+        headers=auth_headers(access_token)
+    )
