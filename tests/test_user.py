@@ -445,11 +445,14 @@ def test_get_users_userid_search_no_results(client, created_two_users):
 def test_get_users_userid_pagination(client, registered_user):
     access_token = registered_user['access_token']
 
+    created_thoughts = []
+
     for _ in range(5):
-        create_thought(
+        thought_response = create_thought(
             client,
             access_token
         )
+        created_thoughts.append(thought_response.json())
 
     response = get_user(
         client,
@@ -464,6 +467,6 @@ def test_get_users_userid_pagination(client, registered_user):
     thoughts = response.json()["thoughts"]
 
     assert thoughts["total"] == 5
-    assert thoughts["items"][0]["id"] == 3
-    assert thoughts["items"][1]["id"] == 4
+    assert thoughts["items"][0]["id"] == created_thoughts[2]["id"]
+    assert thoughts["items"][1]["id"] == created_thoughts[3]["id"]
     assert thoughts["has_next"] is True
