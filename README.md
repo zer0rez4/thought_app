@@ -8,12 +8,14 @@ REST API for creating, managing and sharing personal and public thoughts with au
 
 <p align="center">
 
-![Python](https://img.shields.io/badge/Python-3.12-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-green)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)
-![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)
-![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-green)](https://fastapi.tiangolo.com/)
+[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)](https://www.sqlalchemy.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)](https://www.postgresql.org/)
+[![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)](https://docs.pydantic.dev/)
+[![Docker](https://img.shields.io/badge/Docker-blue)](https://www.docker.com/)
+[![Alembic](https://img.shields.io/badge/Alembic-red)](https://alembic.sqlalchemy.org/)
+[![Pytest](https://img.shields.io/badge/Pytest-blue)](https://docs.pytest.org/)
 
 </p>
 
@@ -41,6 +43,7 @@ The project includes user authentication, access control, token management, data
 - Soft account deletion
 - User restoration
 - PostgreSQL database
+- Dockerized application with PostgreSQL
 - Alembic database migrations
 - Automated tests with Pytest
 
@@ -53,12 +56,65 @@ The project includes user authentication, access control, token management, data
 | SQLAlchemy | ORM and database interaction |
 | PostgreSQL | Relational database |
 | Alembic | Database schema migrations |
+| Docker | Application containerization |
+| Docker Compose | Multi-container application orchestration |
 | Pydantic | Data validation and serialization |
 | Pytest | Automated testing |
 | Pydantic Settings | Application configuration management |
 | Uvicorn | ASGI server for running the application |
 | python-jose | JWT token generation and validation |
 | Passlib + bcrypt | Secure password hashing |
+
+## 🚀 Getting Started
+### Prerequisites
+
+- Docker
+- Docker Compose
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/zer0rez4/thought_app.git
+cd thought_app
+```
+
+### 2. Configure environment variables
+Create a .env file in the project root based on .env.example:
+
+```bash
+On Windows:
+   copy .env.example .env
+
+On Linux/macOS:
+   cp .env.example .env
+```
+Then fill in the required values.
+
+### 3. Start the application
+Build and start the containers:
+```bash
+docker compose up --build
+```
+The API will be available at:
+```text
+http://localhost:8000
+```
+Interactive API documentation:
+```text
+http://localhost:8000/docs
+```
+
+### 4. Stop the application
+To stop the containers:
+```bash
+docker compose down
+```
+The PostgreSQL data is stored in a Docker volume and will persist after stopping or recreating the containers.
+
+To remove the containers and the database data:
+```bash
+docker compose down -v
+```
 
 ## 🏗 Architecture
 
@@ -115,17 +171,20 @@ thought_app/
 │   └── main.py
 │
 ├── tests/
-|   │
+│   │
 │   ├── conftest.py
 │   ├── helpers.py
 │   ├── test_auth.py
 │   └── test_user.py
 │
+├── .dockerignore
 ├── .env.example
-├── requirements.txt
+├── .gitignore
 ├── alembic.ini
+├── compose.yaml
+├── Dockerfile
 ├── README.md
-└── .gitignore
+└── requirements.txt
 ```
 
 The project structure is organized into separate layers with clear responsibilities:
