@@ -6,8 +6,6 @@ from app.api.user import router as user_router
 from app.database.models import Base
 from app.database.database import engine
 
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title='thoughts note')
 
 app.include_router(auth_router)
