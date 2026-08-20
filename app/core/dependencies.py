@@ -30,13 +30,13 @@ def get_current_user(
             detail='invalid token type'
         )
 
-    user_id = int(payload.get('sub'))
-
-    if user_id is None:
+    try:
+        user_id = int(payload.get('sub'))
+    except (TypeError, ValueError):
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = 'invalid token payload'
-        )
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail='invalid token payload'
+    )
 
     user_data = get_user_by_id(db=db, user_id=user_id)
 
