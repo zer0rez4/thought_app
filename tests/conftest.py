@@ -1,7 +1,7 @@
 import pytest
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.main import app
@@ -56,6 +56,24 @@ def client(db):
         yield client
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def count_queries(db):
+    count = 0
+
+    def before_cursor_execute(*args, **kwargs):
+        nonlocal count
+        count += 1
+
+    engine = db.get_bind()
+
+    event.listen(engine, "before_cursor_execute", before_cursor_execute)
+    
+    yield lambda: count
+    
+    event.remove(engine, "before_cursor_execute", before_cursor_execute)
+
 
 
 @pytest.fixture(scope="function")
