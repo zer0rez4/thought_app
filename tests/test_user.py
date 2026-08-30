@@ -467,3 +467,31 @@ def test_get_users_userid_pagination(client, registered_user):
     assert thoughts["items"][0]["id"] == 3
     assert thoughts["items"][1]["id"] == 4
     assert thoughts["has_next"] is True
+
+
+def test_get_users_userid_count_queries(client, created_two_users, count_queries):
+    second_token = created_two_users["second"]["access_token"]
+    first_token = created_two_users["first"]["access_token"]
+
+    for i in range(50):
+        create_thought(
+            client,
+            second_token,
+            text=str(i)
+        )
+
+    before_get = count_queries()
+
+    response = get_user(
+        client,
+        first_token,
+        user_id=created_two_users["first"]["user"].id
+    )
+
+    after_get = count_queries()
+
+    print(f"BEFORE GET: {before_get}")
+    print(f"AFTER GET: {after_get}")
+    print(f"GET QUERIES: {after_get - before_get}")
+
+    assert response.status_code == 200

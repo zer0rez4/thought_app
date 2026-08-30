@@ -49,13 +49,12 @@ def check_thought_change_access(
 
 
 def build_thought_response(
-        thought: ThoughtBase, 
-        author: UserBase
+        thought: ThoughtBase
 ) -> ThoughtResponse:
 
     author_name = (
-        author.name
-        if author.is_active
+        thought.author.name
+        if thought.author.is_active
         else "deleted user"
     )
 
@@ -69,26 +68,17 @@ def build_thought_response(
 
 def build_thought_list_response(
         thoughts_list: list[ThoughtBase],
-        user: UserBase,
         total: int,
         limit: int,
-        offset: int,
-        db: Session | None = None
+        offset: int
 ) -> ThoughtListResponse:
     
     thoughts = []
 
-    for thought in thoughts_list:
-        author = (
-            user
-            if thought.author_id == user.id
-            else get_user_by_id(db, thought.author_id)
-        )
-        
+    for thought in thoughts_list:       
         thoughts.append(
             build_thought_response(
-                thought=thought,
-                author=author
+                thought=thought
             )
         )
 

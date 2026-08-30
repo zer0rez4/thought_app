@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, HTTPException, Depends, Response, Query
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.dependencies import get_current_user
 from app.core.security import verify_password
@@ -119,17 +119,23 @@ def get_user(
             )
 
     if searched_user.id == user.id:
-        query = db.query(ThoughtBase).filter(
-            ThoughtBase.author_id == searched_user.id
-            )
+        query = (
+            db.query(ThoughtBase)
+            .options(selectinload(ThoughtBase.author))
+            .filter(ThoughtBase.author_id == searched_user.id)
+        )
 
     else:
-        query = db.query(ThoughtBase).filter(
-            and_(
-                ThoughtBase.author_id == searched_user.id,
-                ThoughtBase.is_public.is_(True)
+        query = (
+            db.query(ThoughtBase)
+            .options(selectinload(ThoughtBase.author))
+            .filter(
+                and_(
+                    ThoughtBase.author_id == searched_user.id,
+                    ThoughtBase.is_public.is_(True)
                 )
             )
+        )
     
     query = apply_search(query, search)
 
@@ -141,7 +147,6 @@ def get_user(
 
     thought_list = build_thought_list_response(
         thoughts_list=thoughts,
-        user=searched_user,
         total=total,
         limit=limit,
         offset=offset

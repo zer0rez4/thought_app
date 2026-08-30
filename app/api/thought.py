@@ -1,6 +1,6 @@
 from fastapi import APIRouter, status, HTTPException, Response, Depends, Query
 from sqlalchemy import or_, func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, ThoughtListResponse
 from app.database.database import get_db
@@ -39,7 +39,6 @@ def thought_create(
 
     return build_thought_response(
         thought = new_thought,
-        author = user
     )
 
 
@@ -58,11 +57,8 @@ def random_thought(db: Session = Depends(get_db)):
             detail = 'No available public thoughts'
         )
 
-    user = get_user_by_id(db=db, user_id=thought.author_id)
-
     return build_thought_response(
         thought = thought,
-        author = user
     )   
 
 
@@ -89,7 +85,6 @@ def my_thoughts(
 
     return build_thought_list_response(
         thoughts_list=thoughts,
-        user=user,
         total=total,
         limit=limit,
         offset=offset
@@ -105,13 +100,10 @@ def thought_get(
     
     thought = get_thought_by_id(db=db, thought_id=thought_id)
     
-    author = get_user_by_id(db=db, user_id=thought.author_id)
-
     check_thought_read_access(thought=thought, user=user)
 
     return build_thought_response(
         thought = thought,
-        author = author
     )
 
 
@@ -123,11 +115,15 @@ def get_thoughts(
     offset: int = Query(default=0, ge=0),
     search: str | None = Query(default=None, min_length=1)
     ):
-    
-    query = db.query(ThoughtBase).filter(
-        or_(
-            ThoughtBase.is_public.is_(True),
-            ThoughtBase.author_id == user.id
+
+    query = (
+        db.query(ThoughtBase)
+        .options(selectinload(ThoughtBase.author))
+        .filter(
+            or_(
+                ThoughtBase.is_public.is_(True),
+                ThoughtBase.author_id == user.id
+            )
         )
     )
 
@@ -141,11 +137,9 @@ def get_thoughts(
 
     return build_thought_list_response(
         thoughts_list=thoughts,
-        user=user,
         total=total,
         limit=limit,
-        offset=offset,
-        db=db
+        offset=offset
     )
 
 
@@ -172,7 +166,6 @@ def change_thought(
 
     return build_thought_response(
         thought = thought,
-        author = user
     )
 
 

@@ -1,4 +1,4 @@
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 
 
@@ -16,6 +16,8 @@ class UserBase(Base):
     is_private = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
 
+    thoughts = relationship('ThoughtBase', back_populates='author')
+
 
 class ThoughtBase(Base):
     __tablename__ = 'thoughts'
@@ -24,6 +26,8 @@ class ThoughtBase(Base):
     text = Column(String, nullable=False)
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     is_public = Column(Boolean)
+
+    author = relationship('UserBase', back_populates='thoughts')
 
 
 class RefreshTokenBase(Base):

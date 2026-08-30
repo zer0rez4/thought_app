@@ -349,23 +349,29 @@ def test_get_thoughts_no_thoughts(client, registered_user):
     assert data['total'] == 0
 
 
-def test_count_queries(client, created_two_users, count_queries):
+def test_get_thoughts_count_queries(client, created_two_users, count_queries):
     second_token = created_two_users["second"]["access_token"]
     first_token = created_two_users["first"]["access_token"]
 
-    for i in range(10):
+    for i in range(50):
         create_thought(
             client,
             second_token,
             text=str(i)
         )
 
+    before_get = count_queries()
+
     response = get_thoughts(
         client,
         first_token
     )
 
-    print(f"QUERY COUNT: {count_queries()}")
+    after_get = count_queries()
+
+    print(f"BEFORE GET: {before_get}")
+    print(f"AFTER GET: {after_get}")
+    print(f"GET QUERIES: {after_get - before_get}")
 
     assert response.status_code == 200
     
