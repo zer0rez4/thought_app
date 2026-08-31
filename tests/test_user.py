@@ -470,3 +470,14 @@ def test_get_users_userid_pagination(client, registered_user):
     assert thoughts["items"][0]["id"] == created_thoughts[2]["id"]
     assert thoughts["items"][1]["id"] == created_thoughts[3]["id"]
     assert thoughts["has_next"] is True
+
+
+
+def test_user_factory(user_factory):
+    user = user_factory(
+        email="factory@gmail.com",
+        name="Factory"
+    )
+
+    assert user.email == "factory@gmail.com"
+    assert user.name == "Factory"

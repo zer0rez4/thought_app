@@ -16,6 +16,8 @@ from tests.helpers.requests import (
     get_refresh_token,
     create_thought
 )
+from tests.factories.user import create_user_in_db
+from tests.factories.thought import create_thought_in_db
 
 
 engine = create_engine(settings.TEST_SQLALCHENY_DATABASE_URL)
@@ -109,3 +111,17 @@ def created_thought_response(client, registered_user):
     )
 
     return response
+
+
+@pytest.fixture
+def user_factory(db):
+    def factory(**kwargs):
+        return create_user_in_db(db, **kwargs)
+    return factory
+
+
+@pytest.fixture
+def thought_factory(db):
+    def factory(author_id, **kwargs):
+        return create_thought_in_db(db, author_id, **kwargs)
+    return factory
