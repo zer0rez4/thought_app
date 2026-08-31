@@ -66,10 +66,12 @@ def test_post_thoughts_with_space_text(client, registered_user):
 
 
 # ---------- GET THOUGHTS/RANDOM ----------
-def test_get_random_thought_success(client, registered_user, thought_factory):
+def test_get_random_thought_success(client, thought_factory, user_factory):
+    user = user_factory()
+
     for _ in range(5):
         thought_factory(
-            author_id = registered_user['user'].id,
+            author_id = user.id,
         )
 
     response = client.get(
@@ -84,10 +86,12 @@ def test_get_random_thought_success(client, registered_user, thought_factory):
     assert data['is_public'] is True
 
 
-def test_get_random_thought_no_public_thoughts(client, registered_user, thought_factory):
+def test_get_random_thought_no_public_thoughts(client, thought_factory, user_factory):
+    user = user_factory()
+
     for _ in range(5):
         thought_factory(
-            author_id = registered_user['user'].id,
+            author_id = user.id,
             is_public = False
         )
 
@@ -115,7 +119,7 @@ def test_get_random_thought_with_no_thoughts(client):
 
 
 def test_get_random_thought_with_deleted_user(client, registered_user, thought_factory):
-    thought_factory(author_id = registered_user['user']).id
+    thought_factory(author_id = registered_user['user'].id)
 
     delete_user(client, registered_user['access_token'])
 
