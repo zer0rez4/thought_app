@@ -445,11 +445,14 @@ def test_get_users_userid_search_no_results(client, created_two_users):
 def test_get_users_userid_pagination(client, registered_user):
     access_token = registered_user['access_token']
 
+    created_thoughts = []
+
     for _ in range(5):
-        create_thought(
+        thought_response = create_thought(
             client,
             access_token
         )
+        created_thoughts.append(thought_response.json())
 
     response = get_user(
         client,
@@ -495,3 +498,13 @@ def test_get_users_userid_count_queries(client, created_two_users, count_queries
     print(f"GET QUERIES: {after_get - before_get}")
 
     assert response.status_code == 200
+
+
+def test_user_factory(user_factory):
+    user = user_factory(
+        email="factory@gmail.com",
+        name="Factory"
+    )
+
+    assert user.email == "factory@gmail.com"
+    assert user.name == "Factory"

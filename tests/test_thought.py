@@ -66,9 +66,13 @@ def test_post_thoughts_with_space_text(client, registered_user):
 
 
 # ---------- GET THOUGHTS/RANDOM ----------
-def test_get_random_thought_success(client, registered_user):
+def test_get_random_thought_success(client, thought_factory, user_factory):
+    user = user_factory()
+
     for _ in range(5):
-        create_thought(client, registered_user['access_token'])
+        thought_factory(
+            author_id = user.id,
+        )
 
     response = client.get(
         "/thoughts/random"    
@@ -82,12 +86,13 @@ def test_get_random_thought_success(client, registered_user):
     assert data['is_public'] is True
 
 
-def test_get_random_thought_no_public_thoughts(client, registered_user):
+def test_get_random_thought_no_public_thoughts(client, thought_factory, user_factory):
+    user = user_factory()
+
     for _ in range(5):
-        create_thought(
-            client, 
-            registered_user['access_token'],
-            is_public=False
+        thought_factory(
+            author_id = user.id,
+            is_public = False
         )
 
     response = client.get(
@@ -113,8 +118,8 @@ def test_get_random_thought_with_no_thoughts(client):
     assert data['detail'] == 'No available public thoughts'
 
 
-def test_get_random_thought_with_deleted_user(client, registered_user):
-    create_thought(client, registered_user['access_token'])
+def test_get_random_thought_with_deleted_user(client, registered_user, thought_factory):
+    thought_factory(author_id = registered_user['user'].id)
 
     delete_user(client, registered_user['access_token'])
 
@@ -129,16 +134,15 @@ def test_get_random_thought_with_deleted_user(client, registered_user):
 
 
 # ---------- GET THOUGHTS/MY ----------
-def test_get_thoughts_my_success(client, registered_user):
-    create_thought(
-        client,
-        registered_user['access_token']
+def test_get_thoughts_my_success(client, registered_user, thought_factory):
+    thought_factory(
+        author_id = registered_user['user'].id
     )
 
-    create_thought(
-        client,
-        registered_user['access_token'],
-        is_public=False
+    thought_factory(
+        author_id = registered_user['user'].id,
+        is_public = False
+
     )
 
     response = get_my_thoughts(client, registered_user['access_token'])
@@ -166,9 +170,9 @@ def test_get_thoughts_my_without_thoughts(client, registered_user):
     assert data["total"] == 0
 
 
-def test_get_thoughts_my_no_other_thoughts(client, created_two_users):
-    create_thought(client, created_two_users['first']['access_token'])
-    create_thought(client, created_two_users['second']['access_token'])
+def test_get_thoughts_my_no_other_thoughts(client, created_two_users, thought_factory):
+    thought_factory(author_id = created_two_users['first']['user'].id)
+    thought_factory(author_id = created_two_users['second']['user'].id)
 
     response = get_my_thoughts(client, created_two_users['first']['access_token'])
 
@@ -182,13 +186,15 @@ def test_get_thoughts_my_no_other_thoughts(client, created_two_users):
 
 
 # ---------- GET THOUGHTS/{THOUGHT_ID} ----------
-def test_get_thoughts_thoughtid_success(client, created_two_users):
-    thought_response = create_thought(client, created_two_users['first']['access_token'])
+def test_get_thoughts_thoughtid_success(client, created_two_users, thought_factory):
+    thought = thought_factory(
+        author_id = created_two_users["first"]["user"].id
+    )
 
     response = get_thought(
         client,
         created_two_users['second']['access_token'],
-        thought_id=thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 200
@@ -212,34 +218,32 @@ def test_get_thoughts_thoughtid_wrong_id(client, registered_user):
     assert response.json()['detail'] == 'thought does not exist'
 
 
-def test_get_thoughts_thoughtid_private_thought(client, created_two_users):
-    thought_response = create_thought(
-        client, 
-        created_two_users['first']['access_token'],
-        is_public=False
+def test_get_thoughts_thoughtid_private_thought(client, created_two_users, thought_factory):
+    thought = thought_factory(
+        author_id = created_two_users['first']['user'].id,
+        is_public = False
     )
 
     response = get_thought(
         client,
         created_two_users['second']['access_token'],
-        thought_id=thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'user has no rights'
 
 
-def test_get_thoughts_thoughtid_private_thought_owner(client, registered_user):
-    thought_response = create_thought(
-        client, 
-        registered_user['access_token'],
-        is_public=False
+def test_get_thoughts_thoughtid_private_thought_owner(client, registered_user, thought_factory):
+    thought = thought_factory(
+        author_id = registered_user['user'].id,
+        is_public = False
     )
 
     response = get_thought(
         client,
         registered_user['access_token'],
-        thought_id=thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 200
@@ -253,17 +257,15 @@ def test_get_thoughts_thoughtid_private_thought_owner(client, registered_user):
 
 
 # ---------- GET THOUGHTS ----------
-def test_get_thoughts_success(client, created_two_users):
-    create_thought(
-        client, 
-        created_two_users['first']['access_token'],
-        text='1'
+def test_get_thoughts_success(client, created_two_users, thought_factory):
+    thought_factory(
+        author_id = created_two_users['first']['user'].id,
+        text = '1'
     )
 
-    create_thought(
-        client,
-        created_two_users['second']['access_token'],
-        text='2'
+    thought_factory(
+        author_id = created_two_users['second']['user'].id,
+        text = '2'
     )
 
     response = get_thoughts(
@@ -281,18 +283,12 @@ def test_get_thoughts_success(client, created_two_users):
     assert data['items'][1]['text'] == '2'
 
 
-def test_get_thoughts_no_public_thoughts(client, created_two_users):
-    create_thought(
-        client, 
-        created_two_users['first']['access_token'],
-        is_public=False
-    )
-
-    create_thought(
-        client,
-        created_two_users['first']['access_token'],
-        is_public=False
-    )
+def test_get_thoughts_no_public_thoughts(client, created_two_users, thought_factory):
+    for _ in range(3):
+        thought_factory(
+            author_id = created_two_users['first']['user'].id,
+            is_public = False
+        )
 
     response = get_thoughts(
         client,
@@ -307,18 +303,12 @@ def test_get_thoughts_no_public_thoughts(client, created_two_users):
     assert data['total'] == 0
 
 
-def test_get_thoughts_private_thoughts_owner(client, registered_user):
-    create_thought(
-        client, 
-        registered_user['access_token'],
-        is_public=False
-    )
-
-    create_thought(
-        client,
-        registered_user['access_token'],
-        is_public=False
-    )
+def test_get_thoughts_private_thoughts_owner(client, registered_user, thought_factory):
+    for _ in range(3):
+        thought_factory(
+            author_id = registered_user['user'].id,
+            is_public = False
+        )
 
     response = get_thoughts(
         client,
@@ -329,8 +319,8 @@ def test_get_thoughts_private_thoughts_owner(client, registered_user):
 
     data = response.json()
 
-    assert len(data['items']) == 2
-    assert data['total'] == 2
+    assert len(data['items']) == 3
+    assert data['total'] == 3
 
     assert all(item["is_public"] is False for item in data["items"])
 
@@ -377,11 +367,13 @@ def test_get_thoughts_count_queries(client, created_two_users, count_queries):
     
 
 # ---------- PATCH THOUGHTS/{THOUGHT_ID} ----------
-def test_patch_thought_change_text_success(client, registered_user, created_thought_response):
+def test_patch_thought_change_text_success(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     response = update_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id'],
+        thought_id=thought.id,
         text='New test text'
     )
 
@@ -390,14 +382,16 @@ def test_patch_thought_change_text_success(client, registered_user, created_thou
     data = response.json()
 
     assert data["text"] == "New test text"
-    assert data["id"] == created_thought_response.json()["id"]
+    assert data["id"] == thought.id
 
 
-def test_patch_thought_change_is_public_success(client, registered_user, created_thought_response):
+def test_patch_thought_change_is_public_success(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     response = update_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id'],
+        thought_id=thought.id,
         is_public=False
     )
 
@@ -406,14 +400,16 @@ def test_patch_thought_change_is_public_success(client, registered_user, created
     data = response.json()
 
     assert data["is_public"] == False
-    assert data["id"] == created_thought_response.json()["id"]
+    assert data["id"] == thought.id
 
 
-def test_patch_thought_empty_text(client, registered_user, created_thought_response):
+def test_patch_thought_empty_text(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     response = update_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id'],
+        thought_id=thought.id,
         text="     "
     )
 
@@ -421,16 +417,16 @@ def test_patch_thought_empty_text(client, registered_user, created_thought_respo
 
     data = response.json()
 
-    assert 'Text can not be empty' in data['detail'][0]['msg']\
+    assert 'Text can not be empty' in data['detail'][0]['msg']
 
 
-def test_patch_thought_another_user(client, created_two_users):
-    thought_response = create_thought(client, created_two_users['first']['access_token'])
+def test_patch_thought_another_user(client, created_two_users, thought_factory):
+    thought = thought_factory(author_id = created_two_users['first']['user'].id)
 
     response = update_thought(
         client,
         created_two_users['second']['access_token'],
-        thought_id=thought_response.json()['id'],
+        thought_id=thought.id,
         text='New test text'
     )
 
@@ -438,11 +434,13 @@ def test_patch_thought_another_user(client, created_two_users):
     assert response.json()['detail'] == "user has no rights"
 
 
-def test_patch_thought_with_none_params(client, registered_user, created_thought_response):
+def test_patch_thought_with_none_params(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     response = update_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id'],
+        thought_id=thought.id,
         text=None,
         is_public=None
     )
@@ -456,11 +454,13 @@ def test_patch_thought_with_none_params(client, registered_user, created_thought
 
 
 # ---------- DELETE THOUGHTS/{THOUGHT_ID} ----------
-def test_delete_thought_success(client, registered_user, created_thought_response):
+def test_delete_thought_success(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     response = delete_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 204
@@ -468,36 +468,38 @@ def test_delete_thought_success(client, registered_user, created_thought_respons
     data = get_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id']
+        thought_id=thought.id
     ).json()
 
     assert data['detail'] == 'thought does not exist'
 
 
-def test_delete_thought_twice(client, registered_user, created_thought_response):
+def test_delete_thought_twice(client, registered_user, thought_factory):
+    thought = thought_factory(author_id = registered_user['user'].id)
+
     delete_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id']
+        thought_id=thought.id
     )
 
     response = delete_thought(
         client,
         registered_user['access_token'],
-        thought_id=created_thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 404
     assert response.json()['detail'] == 'thought does not exist'
 
 
-def test_delete_thought_another_user(client, created_two_users):
-    thought_response = create_thought(client, created_two_users['first']['access_token'])
+def test_delete_thought_another_user(client, created_two_users, thought_factory):
+    thought = thought_factory(author_id = created_two_users['first']['user'].id)
 
     response = delete_thought(
         client,
         created_two_users['second']['access_token'],
-        thought_id=thought_response.json()['id']
+        thought_id=thought.id
     )
 
     assert response.status_code == 403

@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.main import app
 from app.database.database import get_db
-from app.database.models import Base, UserBase, ThoughtBase
+from app.database.models import Base, UserBase
 from app.core.settings import settings
 
 from tests.helpers.data import DEFAULT_USER
@@ -16,6 +16,8 @@ from tests.helpers.requests import (
     get_refresh_token,
     create_thought
 )
+from tests.factories.user import create_user_in_db
+from tests.factories.thought import create_thought_in_db
 
 
 engine = create_engine(settings.TEST_SQLALCHENY_DATABASE_URL)
@@ -27,29 +29,35 @@ TestSessionLocal = sessionmaker(
 )
 
 
+@pytest.fixture(scope="session")
+def database():
+    Base.metadata.create_all(engine)
+
+    yield
+
+    Base.metadata.drop_all(engine)
+
+
 @pytest.fixture(scope='function')
-def db():
-    Base.metadata.create_all(bind=engine)
+def db(database):
+    connection = engine.connect()
+    transaction = connection.begin()
 
-    db = TestSessionLocal()
+    db = TestSessionLocal(bind=connection)
 
     try:
         yield db
     finally:
         db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-def override_get_db():
-    db = TestSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture(scope="function")
 def client(db):
+    def override_get_db():
+        yield db
+    
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as client:
@@ -121,3 +129,17 @@ def created_thought_response(client, registered_user):
     )
 
     return response
+
+
+@pytest.fixture
+def user_factory(db):
+    def factory(**kwargs):
+        return create_user_in_db(db, **kwargs)
+    return factory
+
+
+@pytest.fixture
+def thought_factory(db):
+    def factory(author_id, **kwargs):
+        return create_thought_in_db(db, author_id, **kwargs)
+    return factory
