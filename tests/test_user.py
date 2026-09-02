@@ -10,9 +10,7 @@ from tests.helpers.requests import (
     update_user,
     delete_user,
     restore_user,
-    get_user,
-
-    create_thought
+    get_user
 )
 
 from app.database.models import UserBase
@@ -239,20 +237,12 @@ def test_users_restore_wrong_password(client, registered_user):
 
 
 # ---------- GET USERS/{USER_ID} ----------
-def test_get_users_userid_success(client, created_two_users):
-    create_thought(
-        client,
-        created_two_users["first"]["access_token"],
-        text="PUBLIC THOUGHT 1",
-        is_public=True
-    )
-
-    create_thought(
-        client,
-        created_two_users["first"]["access_token"],
-        text="PUBLIC THOUGHT 2",
-        is_public=True
-    )
+def test_get_users_userid_success(client, created_two_users, thought_factory):
+    for thought_text in ['1', '2']:
+        thought_factory(
+            author_id = created_two_users['first']['user'].id,
+            text = thought_text
+        )
 
     response = get_user(
         client, 
@@ -271,8 +261,8 @@ def test_get_users_userid_success(client, created_two_users):
     assert thoughts["total"] == 2
     assert len(thoughts["items"]) == 2
 
-    assert thoughts["items"][0]["text"] == "PUBLIC THOUGHT 1"
-    assert thoughts["items"][1]["text"] == "PUBLIC THOUGHT 2"
+    assert thoughts["items"][0]["text"] == "1"
+    assert thoughts["items"][1]["text"] == "2"
 
 
 def test_get_users_userid_wrong_id(client, registered_user):
@@ -319,17 +309,12 @@ def test_get_users_userid_private_account_owner(client, registered_user):
     assert response.status_code == 200
 
 
-def test_get_users_userid_check_only_public_thoughts(client, created_two_users):
-    create_thought(
-        client,
-        created_two_users['first']['access_token'],
-        is_public=False
-    )
-
-    create_thought(
-        client,
-        created_two_users['first']['access_token']
-    )
+def test_get_users_userid_check_only_public_thoughts(client, created_two_users, thought_factory):
+    for public in [True, False]:
+        thought_factory(
+            author_id = created_two_users['first']['user'].id,
+            is_public = public
+        )
 
     response = get_user(
         client,
@@ -346,23 +331,16 @@ def test_get_users_userid_check_only_public_thoughts(client, created_two_users):
     assert thoughts["items"][0]["is_public"] is True
 
 
-def test_get_users_userid_public_private_owner(client, registered_user):
-    access_token = registered_user['access_token']
+def test_get_users_userid_public_private_owner(client, registered_user, thought_factory):
+    for public in [True, False]:
+        thought_factory(
+            author_id = registered_user['user'].id,
+            is_public = public
+        )
     
-    create_thought(
-        client,
-        access_token,
-        is_public=False
-    )
-
-    create_thought(
-        client,
-        access_token
-    )
-
     response = get_user(
         client, 
-        access_token,
+        registered_user['access_token'],
         user_id=registered_user['user'].id
     )
 
@@ -389,15 +367,13 @@ def test_get_users_userid_user_without_thoughts(client, created_two_users):
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_search(client, created_two_users):
-    access_token = created_two_users['first']['access_token']
-
+def test_get_users_userid_search(client, created_two_users, thought_factory):
     for thought_text in ["search check", "SEARCH check", "TEST"]:
-        create_thought(
-            client,
-            access_token,
-            text=thought_text
+        thought_factory(
+            author_id = created_two_users['first']['user'].id,
+            text = thought_text
         )
+
 
     response = get_user(
         client,
@@ -417,15 +393,13 @@ def test_get_users_userid_search(client, created_two_users):
     assert thoughts["items"][1]["text"] == "SEARCH check"
 
 
-def test_get_users_userid_search_no_results(client, created_two_users):
-    access_token = created_two_users['first']['access_token']
-
+def test_get_users_userid_search_no_results(client, created_two_users, thought_factory):
     for thought_text in ["search check", "SEARCH check", "TEST"]:
-        create_thought(
-            client,
-            access_token,
-            text=thought_text
+        thought_factory(
+            author_id = created_two_users['first']['user'].id,
+            text = thought_text
         )
+
 
     response = get_user(
         client,
@@ -442,17 +416,17 @@ def test_get_users_userid_search_no_results(client, created_two_users):
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_pagination(client, registered_user):
+def test_get_users_userid_pagination(client, registered_user, thought_factory):
     access_token = registered_user['access_token']
 
     created_thoughts = []
 
     for _ in range(5):
-        thought_response = create_thought(
-            client,
-            access_token
+        thought = thought_factory(
+            author_id = registered_user['user'].id
         )
-        created_thoughts.append(thought_response.json())
+
+        created_thoughts.append(thought)
 
     response = get_user(
         client,
@@ -466,21 +440,20 @@ def test_get_users_userid_pagination(client, registered_user):
 
     thoughts = response.json()["thoughts"]
 
-    assert thoughts["total"] == 5
-    assert thoughts["items"][0]["id"] == 3
-    assert thoughts["items"][1]["id"] == 4
+    assert thoughts["total"] == len(created_thoughts)
+    assert thoughts["items"][0]["id"] == created_thoughts[2].id
+    assert thoughts["items"][1]["id"] == created_thoughts[3].id
     assert thoughts["has_next"] is True
 
 
-def test_get_users_userid_count_queries(client, created_two_users, count_queries):
+def test_get_users_userid_count_queries(client, created_two_users, count_queries, thought_factory):
     second_token = created_two_users["second"]["access_token"]
     first_token = created_two_users["first"]["access_token"]
 
     for i in range(50):
-        create_thought(
-            client,
-            second_token,
-            text=str(i)
+        thought_factory(
+            author_id = created_two_users['second']['user'].id,
+            text = str(i)
         )
 
     before_get = count_queries()
@@ -500,11 +473,4 @@ def test_get_users_userid_count_queries(client, created_two_users, count_queries
     assert response.status_code == 200
 
 
-def test_user_factory(user_factory):
-    user = user_factory(
-        email="factory@gmail.com",
-        name="Factory"
-    )
 
-    assert user.email == "factory@gmail.com"
-    assert user.name == "Factory"
