@@ -7,7 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.database.database import get_db
 from app.database.models import Base, UserBase
+from app.database.models import Base, UserBase
 from app.core.settings import settings
+from app.services.auth import generate_tokens
 
 from tests.helpers.data import DEFAULT_USER
 from tests.helpers.requests import (
@@ -67,74 +69,18 @@ def client(db):
 
 
 @pytest.fixture
-def count_queries(db):
-    count = 0
-
-    def before_cursor_execute(*args, **kwargs):
-        nonlocal count
-        count += 1
-
-    engine = db.get_bind()
-
-    event.listen(engine, "before_cursor_execute", before_cursor_execute)
-    
-    yield lambda: count
-    
-    event.remove(engine, "before_cursor_execute", before_cursor_execute)
-
-
-
-@pytest.fixture(scope="function")
-def registered_user(client, db):
-    response = register_user(client)
-
-    user = db.query(UserBase).filter(
-        UserBase.email == DEFAULT_USER["email"]
-    ).first()
-
-    return {
-        "user": user,
-        "access_token": get_access_token(response),
-        "refresh_token": get_refresh_token(response)
-    }
-
-
-@pytest.fixture
-def created_two_users(client, db, registered_user):
-    response = register_user(
-        client,
-        email="test2@gmail.com",
-        name="Test2"
-    )
-
-    user = db.query(UserBase).filter(
-        UserBase.email == "test2@gmail.com"
-    ).first()
-
-    return {
-        "first": registered_user,
-        "second": {
-            "user": user,
-            "access_token": get_access_token(response),
-            "refresh_token": get_refresh_token(response)
-        }
-    }
-
-
-@pytest.fixture
-def created_thought_response(client, registered_user):
-    response = create_thought(
-        client,
-        registered_user["access_token"]
-    )
-
-    return response
-
-
-@pytest.fixture
-def user_factory(db):
+def authenticated_user(db):
     def factory(**kwargs):
-        return create_user_in_db(db, **kwargs)
+        user = create_user_in_db(db, **kwargs)
+        tokens = generate_tokens(user.id, db)
+
+        db.commit()
+
+        return {
+            'user': user,
+            'access_token': tokens.access_token,
+            'refresh_token': tokens.refresh_token
+        }
     return factory
 
 

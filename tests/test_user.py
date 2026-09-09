@@ -16,8 +16,8 @@ from tests.helpers.requests import (
 from app.database.models import UserBase
 
 # ---------- GET USERS/ME ----------
-def test_users_me_success(client, registered_user):
-    response = get_users_me(client, registered_user['access_token'])
+def test_users_me_success(client, authenticated_user):
+    response = get_users_me(client, authenticated_user()['access_token'])
 
     data = response.json()
 
@@ -28,33 +28,37 @@ def test_users_me_success(client, registered_user):
     assert data['is_private'] is False
 
 
-def test_users_me_logout_then_usersme(client, registered_user):
-    logout_user(client, registered_user['refresh_token'])
+def test_users_me_logout_then_usersme(client, authenticated_user):
+    user = authenticated_user()
 
-    response = get_users_me(client, registered_user['access_token'])
+    logout_user(client, user['refresh_token'])
+
+    response = get_users_me(client, user['access_token'])
 
     assert response.status_code == 200
 
 
-def test_users_me_refresh_then_usersme(client, registered_user):
-    refresh_response = refresh_user(client, registered_user['refresh_token'])
+def test_users_me_refresh_then_usersme(client, authenticated_user):
+    refresh_response = refresh_user(client, authenticated_user()['refresh_token'])
 
     response = get_users_me(client, get_access_token(refresh_response))
 
     assert response.status_code == 200
 
 
-def test_users_me_deleted_user(client, registered_user):
-    delete_user(client, registered_user['access_token'])
+def test_users_me_deleted_user(client, authenticated_user):
+    user = authenticated_user()
 
-    response = get_users_me(client, registered_user['access_token'])
+    delete_user(client, user['access_token'])
+
+    response = get_users_me(client, user['access_token'])
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is deleted'
 
 
-def test_users_me_refresh_instead_access(client, registered_user):
-    response = get_users_me(client, registered_user['refresh_token'])
+def test_users_me_refresh_instead_access(client, authenticated_user):
+    response = get_users_me(client, authenticated_user()['refresh_token'])
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'invalid token type'
@@ -68,10 +72,10 @@ def test_users_me_without_authorization(client):
 
 
 # ---------- PATCH USERS/ME ----------
-def test_users_me_change_name_success(client, registered_user):
+def test_users_me_change_name_success(client, authenticated_user):
     response = update_user(
         client,
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         new_name="new_name_test"
     )
 
@@ -83,10 +87,10 @@ def test_users_me_change_name_success(client, registered_user):
     assert data["is_private"] is False
 
 
-def test_users_me_change_privacy_success(client, registered_user):
+def test_users_me_change_privacy_success(client, authenticated_user):
     response = update_user(
         client,
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         is_private=True
     )
 
@@ -98,10 +102,10 @@ def test_users_me_change_privacy_success(client, registered_user):
     assert data["is_private"] is True
 
 
-def test_users_me_change_name_and_privacy_success(client, registered_user):
+def test_users_me_change_name_and_privacy_success(client, authenticated_user):
     response = update_user(
         client,
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         new_name="new_name_test",
         is_private=True
     )
@@ -114,10 +118,10 @@ def test_users_me_change_name_and_privacy_success(client, registered_user):
     assert data["is_private"] is True
 
 
-def test_users_me_update_without_changes(client, registered_user):
+def test_users_me_update_without_changes(client, authenticated_user):
     response = update_user(
         client,
-        registered_user['access_token']
+        authenticated_user()['access_token']
     )
 
     assert response.status_code == 200
@@ -128,10 +132,10 @@ def test_users_me_update_without_changes(client, registered_user):
     assert data["is_private"] is False
 
 
-def test_users_me_invalid_name(client, registered_user):
+def test_users_me_invalid_name(client, authenticated_user):
     response = update_user(
         client, 
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         new_name="    "
     )
 
@@ -143,10 +147,10 @@ def test_users_me_invalid_name(client, registered_user):
     assert "The name can not be empty" in error["msg"]
 
 
-def test_users_me_invalid_is_private(client, registered_user):
+def test_users_me_invalid_is_private(client, authenticated_user):
     response = update_user(
         client,
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         is_private="not_boolean"
     )
 
@@ -166,31 +170,35 @@ def test_users_me_without_auth(client):
 
 
 # ---------- DELETE USERS/ME ----------
-def test_delete_user_success(client, db, registered_user):
-    response = delete_user(client, registered_user['access_token'])
+def test_delete_user_success(client, db, authenticated_user):
+    user = authenticated_user()
+
+    response = delete_user(client, user['access_token'])
 
     assert response.status_code == 204
 
     db.expire_all()
 
     user = db.query(UserBase).filter(
-        UserBase.id == registered_user["user"].id
+        UserBase.id == user["user"].id
     ).first()
 
     assert user.is_active is False
 
 
-def test_delete_user_already_deleted(client, registered_user):
-    delete_user(client, registered_user['access_token'])
+def test_delete_user_already_deleted(client, authenticated_user):
+    user = authenticated_user()
 
-    response = delete_user(client, registered_user['access_token'])
+    delete_user(client, user['access_token'])
+
+    response = delete_user(client, user['access_token'])
 
     assert response.status_code == 403
     assert response.json()["detail"] == "account is deleted"
 
 
-def test_delete_user_login_after_delete(client, registered_user):
-    delete_user(client, registered_user['access_token'])
+def test_delete_user_login_after_delete(client, authenticated_user):
+    delete_user(client, authenticated_user()['access_token'])
 
     response = login_user(client)
 
@@ -199,8 +207,8 @@ def test_delete_user_login_after_delete(client, registered_user):
 
 
 # ---------- POST USERS/RESTORE ----------
-def test_users_restore_success(client, db, registered_user):
-    delete_user(client, registered_user['access_token'])
+def test_users_restore_success(client, db, authenticated_user):
+    delete_user(client, authenticated_user()['access_token'])
 
     response = restore_user(client)
 
@@ -220,15 +228,17 @@ def test_users_restore_user_not_exist(client):
     assert response.json()['detail'] == 'User does not exist'
 
 
-def test_users_restore_user_is_active(client, registered_user):
+def test_users_restore_user_is_active(client, authenticated_user):
+    authenticated_user()
+
     response = restore_user(client)
 
     assert response.status_code == 409
     assert response.json()['detail'] == 'account is already active'
 
 
-def test_users_restore_wrong_password(client, registered_user):
-    delete_user(client, registered_user['access_token'])
+def test_users_restore_wrong_password(client, authenticated_user):
+    delete_user(client, authenticated_user()['access_token'])
 
     response = restore_user(client, password="wrong_password")
 
@@ -237,17 +247,20 @@ def test_users_restore_wrong_password(client, registered_user):
 
 
 # ---------- GET USERS/{USER_ID} ----------
-def test_get_users_userid_success(client, created_two_users, thought_factory):
-    for thought_text in ['1', '2']:
+def test_get_users_userid_success(client, authenticated_user, thought_factory):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
+    for text in ['1', '2']:
         thought_factory(
-            author_id = created_two_users['first']['user'].id,
-            text = thought_text
+            author_id=user_1['user'].id,
+            text=text
         )
 
     response = get_user(
         client, 
-        created_two_users["second"]["access_token"],
-        user_id=created_two_users["first"]["user"].id
+        user_2["access_token"],
+        user_id=user_1["user"].id
     )
 
     assert response.status_code == 200
@@ -265,10 +278,10 @@ def test_get_users_userid_success(client, created_two_users, thought_factory):
     assert thoughts["items"][1]["text"] == "2"
 
 
-def test_get_users_userid_wrong_id(client, registered_user):
+def test_get_users_userid_wrong_id(client, authenticated_user):
     response = get_user(
         client,
-        registered_user['access_token'],
+        authenticated_user()['access_token'],
         user_id=9999
     )
 
@@ -276,50 +289,58 @@ def test_get_users_userid_wrong_id(client, registered_user):
     assert response.json()['detail'] == 'user not found'
 
 
-def test_get_users_userid_private_account(client, created_two_users):
+def test_get_users_userid_private_account(client, authenticated_user):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
     update_user(
         client,
-        created_two_users['first']['access_token'],
+        user_1['access_token'],
         is_private=True
     )
 
     response = get_user(
         client, 
-        created_two_users['second']['access_token'],
-        user_id=created_two_users['first']['user'].id
+        user_2['access_token'],
+        user_id=user_1['user'].id
     )
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is private'
 
 
-def test_get_users_userid_private_account_owner(client, registered_user):
+def test_get_users_userid_private_account_owner(client, authenticated_user):
+    user = authenticated_user()
+
     update_user(
         client,
-        registered_user['access_token'],
+        user['access_token'],
         is_private=True
     )
 
     response = get_user(
         client,
-        registered_user['access_token'],
-        user_id=registered_user['user'].id
+        user['access_token'],
+        user_id=user['user'].id
     )
 
     assert response.status_code == 200
 
 
-def test_get_users_userid_check_only_public_thoughts(client, created_two_users, thought_factory):
-    for public in [True, False]:
+def test_get_users_userid_check_only_public_thoughts(client, authenticated_user, thought_factory):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
+    for is_public in [False, True]:
         thought_factory(
-            author_id = created_two_users['first']['user'].id,
-            is_public = public
+            author_id=user_1['user'].id,
+            is_public=is_public
         )
 
     response = get_user(
         client,
-        created_two_users['second']['access_token'],
-        user_id=created_two_users['first']['user'].id
+        user_2['access_token'],
+        user_id=user_1['user'].id
     )
 
     assert response.status_code == 200
@@ -331,17 +352,19 @@ def test_get_users_userid_check_only_public_thoughts(client, created_two_users, 
     assert thoughts["items"][0]["is_public"] is True
 
 
-def test_get_users_userid_public_private_owner(client, registered_user, thought_factory):
-    for public in [True, False]:
+def test_get_users_userid_public_private_owner(client, authenticated_user, thought_factory):
+    user = authenticated_user()
+
+    for thought_is_public in [False, True]:
         thought_factory(
-            author_id = registered_user['user'].id,
-            is_public = public
+            author_id=user['user'].id,
+            is_public=thought_is_public
         )
-    
+
     response = get_user(
         client, 
-        registered_user['access_token'],
-        user_id=registered_user['user'].id
+        user['access_token'],
+        user_id=user['user'].id
     )
 
     assert response.status_code == 200
@@ -352,11 +375,14 @@ def test_get_users_userid_public_private_owner(client, registered_user, thought_
     assert len(thoughts["items"]) == 2
 
 
-def test_get_users_userid_user_without_thoughts(client, created_two_users):
+def test_get_users_userid_user_without_thoughts(client, authenticated_user):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
     response = get_user(
         client,
-        created_two_users['second']['access_token'],
-        user_id=created_two_users['first']['user'].id
+        user_2['access_token'],
+        user_id=user_1['user'].id
     )
 
     assert response.status_code == 200
@@ -367,18 +393,20 @@ def test_get_users_userid_user_without_thoughts(client, created_two_users):
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_search(client, created_two_users, thought_factory):
+def test_get_users_userid_search(client, authenticated_user, thought_factory):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
     for thought_text in ["search check", "SEARCH check", "TEST"]:
         thought_factory(
-            author_id = created_two_users['first']['user'].id,
-            text = thought_text
+            author_id=user_1['user'].id,
+            text=thought_text
         )
-
 
     response = get_user(
         client,
-        created_two_users['second']['access_token'],
-        user_id=created_two_users['first']['user'].id,
+        user_2['access_token'],
+        user_id=user_1['user'].id,
         search="search"
     )
 
@@ -393,18 +421,20 @@ def test_get_users_userid_search(client, created_two_users, thought_factory):
     assert thoughts["items"][1]["text"] == "SEARCH check"
 
 
-def test_get_users_userid_search_no_results(client, created_two_users, thought_factory):
+def test_get_users_userid_search_no_results(client, authenticated_user, thought_factory):
+    user_1 = authenticated_user()
+    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+
     for thought_text in ["search check", "SEARCH check", "TEST"]:
         thought_factory(
-            author_id = created_two_users['first']['user'].id,
-            text = thought_text
+            author_id=user_1['user'].id,
+            text=thought_text
         )
-
 
     response = get_user(
         client,
-        created_two_users['second']['access_token'],
-        user_id=created_two_users['first']['user'].id,
+        user_2['access_token'],
+        user_id=user_1['user'].id,
         search="fortnite"
     )
 
@@ -416,22 +446,22 @@ def test_get_users_userid_search_no_results(client, created_two_users, thought_f
     assert len(thoughts["items"]) == 0
 
 
-def test_get_users_userid_pagination(client, registered_user, thought_factory):
-    access_token = registered_user['access_token']
+def test_get_users_userid_pagination(client, authenticated_user, thought_factory):
+    user = authenticated_user()
 
     created_thoughts = []
 
     for _ in range(5):
-        thought = thought_factory(
-            author_id = registered_user['user'].id
+        thought_response = thought_factory(
+            author_id=user['user'].id
         )
 
-        created_thoughts.append(thought)
+        created_thoughts.append(thought_response)
 
     response = get_user(
         client,
-        access_token,
-        user_id=registered_user['user'].id,
+        user['access_token'],
+        user_id=user['user'].id,
         limit=2,
         offset=2
     )
@@ -440,37 +470,8 @@ def test_get_users_userid_pagination(client, registered_user, thought_factory):
 
     thoughts = response.json()["thoughts"]
 
-    assert thoughts["total"] == len(created_thoughts)
+    assert thoughts["total"] == 5
     assert thoughts["items"][0]["id"] == created_thoughts[2].id
     assert thoughts["items"][1]["id"] == created_thoughts[3].id
     assert thoughts["has_next"] is True
-
-
-def test_get_users_userid_count_queries(client, created_two_users, count_queries, thought_factory):
-    second_token = created_two_users["second"]["access_token"]
-    first_token = created_two_users["first"]["access_token"]
-
-    for i in range(50):
-        thought_factory(
-            author_id = created_two_users['second']['user'].id,
-            text = str(i)
-        )
-
-    before_get = count_queries()
-
-    response = get_user(
-        client,
-        first_token,
-        user_id=created_two_users["first"]["user"].id
-    )
-
-    after_get = count_queries()
-
-    print(f"BEFORE GET: {before_get}")
-    print(f"AFTER GET: {after_get}")
-    print(f"GET QUERIES: {after_get - before_get}")
-
-    assert response.status_code == 200
-
-
 
