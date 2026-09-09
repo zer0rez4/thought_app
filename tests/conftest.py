@@ -67,53 +67,6 @@ def client(db):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(scope="function")
-def registered_user(client, db):
-    response = register_user(client)
-
-    user = db.query(UserBase).filter(
-        UserBase.email == DEFAULT_USER["email"]
-    ).first()
-
-    return {
-        "user": user,
-        "access_token": get_access_token(response),
-        "refresh_token": get_refresh_token(response)
-    }
-
-
-@pytest.fixture
-def created_two_users(client, db, registered_user):
-    response = register_user(
-        client,
-        email="test2@gmail.com",
-        name="Test2"
-    )
-
-    user = db.query(UserBase).filter(
-        UserBase.email == "test2@gmail.com"
-    ).first()
-
-    return {
-        "first": registered_user,
-        "second": {
-            "user": user,
-            "access_token": get_access_token(response),
-            "refresh_token": get_refresh_token(response)
-        }
-    }
-
-
-@pytest.fixture
-def created_thought_response(client, registered_user):
-    response = create_thought(
-        client,
-        registered_user["access_token"]
-    )
-
-    return response
-
-
 @pytest.fixture
 def authenticated_user(db):
     def factory(**kwargs):

@@ -12,10 +12,15 @@ from tests.helpers.requests import (
 )
 
 # ---------- POST THOUGHTS ----------
-def test_post_thoughts_success(created_thought_response):
-    assert created_thought_response.status_code == 200
+def test_post_thoughts_success(client, authenticated_user):
+    response = create_thought(
+        client,
+        authenticated_user()['access_token']
+    )
 
-    data = created_thought_response.json()
+    assert response.status_code == 200
+
+    data = response.json()
 
     assert isinstance(data["id"], int)
     assert data["text"] == DEFAULT_THOUGHT["text"]
@@ -397,7 +402,7 @@ def test_patch_thought_change_is_public_success(client, authenticated_user, thou
 
     data = response.json()
 
-    assert data["is_public"] == False
+    assert data["is_public"] is False
     assert data["id"] == thought.id
 
 
