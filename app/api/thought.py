@@ -6,14 +6,14 @@ from app.schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, 
 from app.database.database import get_db
 from app.database.models import ThoughtBase, UserBase
 from app.core.dependencies import get_current_user
-from app.services.user import get_user_by_id
 from app.services.thought import (
     get_thought_by_id, 
     build_thought_response, 
     check_thought_read_access,
     check_thought_change_access,
     build_thought_list_response, 
-    paginate_query, apply_search
+    paginate_query, apply_search,
+    create_thought, update_thought, delete_thought
 )
 
 
@@ -27,15 +27,12 @@ def thought_create(
     db: Session = Depends(get_db)
     ):
 
-    new_thought = ThoughtBase(
-        text = thought.text,
-        author_id = user.id,
-        is_public = thought.is_public
+    new_thought = create_thought(
+        db=db,
+        author_id=user.id,
+        text=thought.text,
+        is_public=thought.is_public
     )
-
-    db.add(new_thought)
-    db.commit()
-    db.refresh(new_thought)
 
     return build_thought_response(
         thought = new_thought,
@@ -155,22 +152,20 @@ def change_thought(
     
     check_thought_change_access(thought=thought, user=user)
 
-    if thought_update.text is not None:
-        thought.text = thought_update.text
-
-    if thought_update.is_public is not None:
-        thought.is_public = thought_update.is_public
-    
-    db.commit()
-    db.refresh(thought)
+    updated_thought = update_thought(
+        db=db, 
+        thought=thought, 
+        text=thought_update.text, 
+        is_public=thought_update.is_public
+    )
 
     return build_thought_response(
-        thought = thought,
+        thought = updated_thought
     )
 
 
 @router.delete('/thoughts/{thought_id}',  tags=['thought'])
-def delete_thought(
+def thought_delete(
     thought_id: int,
     user: UserBase = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -179,8 +174,10 @@ def delete_thought(
     thought = get_thought_by_id(db=db, thought_id=thought_id)
 
     check_thought_change_access(thought=thought, user=user)
-    
-    db.delete(thought)
-    db.commit()
 
+    delete_thought(
+        db=db,
+        thought=thought
+    )
+    
     return Response(status_code=status.HTTP_204_NO_CONTENT)

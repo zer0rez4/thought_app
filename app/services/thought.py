@@ -120,3 +120,48 @@ def apply_search(
         ) 
 
     return query
+
+
+def create_thought(
+        db: Session,
+        author_id: int,
+        text: str,
+        is_public: bool
+) -> ThoughtBase:
+    thought = ThoughtBase(
+        text = text,
+        author_id = author_id,
+        is_public = is_public
+    )
+
+    db.add(thought)
+    db.commit()
+    db.refresh(thought)
+
+    return thought
+
+
+def update_thought(
+    db: Session,
+    thought: ThoughtBase,
+    text: str | None = None,
+    is_public: bool | None = None
+) -> ThoughtBase:
+    if text is not None:
+        thought.text = text
+
+    if is_public is not None:
+        thought.is_public = is_public
+
+    db.commit()
+    db.refresh(thought)
+
+    return thought
+
+
+def delete_thought(
+    db: Session,
+    thought: ThoughtBase
+) -> None:
+    db.delete(thought)
+    db.commit()
