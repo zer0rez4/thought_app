@@ -17,7 +17,6 @@ def create_thought_in_db(
     )
 
     db.add(thought)
-    db.commit()
-    db.refresh(thought)
+    db.flush()
 
     return thought

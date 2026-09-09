@@ -8,6 +8,7 @@ from app.main import app
 from app.database.database import get_db
 from app.database.models import Base, UserBase
 from app.core.settings import settings
+from app.services.auth import generate_tokens
 
 from tests.helpers.data import DEFAULT_USER
 from tests.helpers.requests import (
@@ -114,9 +115,18 @@ def created_thought_response(client, registered_user):
 
 
 @pytest.fixture
-def user_factory(db):
+def authenticated_user(db):
     def factory(**kwargs):
-        return create_user_in_db(db, **kwargs)
+        user = create_user_in_db(db, **kwargs)
+        tokens = generate_tokens(user.id, db)
+
+        db.commit()
+
+        return {
+            'user': user,
+            'access_token': tokens.access_token,
+            'refresh_token': tokens.refresh_token
+        }
     return factory
 
 
