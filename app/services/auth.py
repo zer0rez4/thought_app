@@ -1,15 +1,17 @@
 from datetime import datetime, timedelta, timezone
-from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import settings
 from app.core.jwt import create_access_token, create_refresh_token, decode_token
 from app.database.models import RefreshTokenBase
 from app.schemas.token import TokenResponse
 
+
 def generate_tokens(
         user_id: int,
-        db: Session
+        db: AsyncSession
 ) -> TokenResponse:
     to_encode = {'sub': str(user_id)}
 
@@ -40,9 +42,9 @@ def generate_tokens(
     )
 
 
-def validate_refresh_token(
+async def validate_refresh_token(
         token: str,
-        db: Session,
+        db: AsyncSession,
 ) -> tuple[int, RefreshTokenBase]:
     
     payload = decode_token(token)
@@ -59,11 +61,12 @@ def validate_refresh_token(
             detail='invalid token type'
         )
 
-    refresh_token_db = (
-        db.query(RefreshTokenBase)
-        .filter(RefreshTokenBase.token == token)
-        .first()
+    result = await db.execute(
+        select(RefreshTokenBase)
+        .where(RefreshTokenBase.token == token)
     )
+
+    refresh_token_db = result.scalar_one_or_none()
 
     if refresh_token_db is None:
         raise HTTPException(

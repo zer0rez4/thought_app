@@ -1,21 +1,22 @@
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session, Query
+from sqlalchemy import select, func
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import ThoughtBase, UserBase
 from app.schemas.thoughts import ThoughtResponse, ThoughtListResponse
-from app.services.user import get_user_by_id
 
 
-def get_thought_by_id(
-        db: Session,
+async def get_thought_by_id(
+        db: AsyncSession,
         thought_id: int
 ) -> ThoughtBase:
     
-    thought = (
-        db.query(ThoughtBase)
-        .filter(ThoughtBase.id == thought_id)
-        .first()
+    result = await db.execute(
+        select(ThoughtBase)
+        .where(ThoughtBase.id == thought_id)
     )
+
+    thought = result.scalar_one_or_none()
 
     if not thought:
         raise HTTPException(
@@ -91,39 +92,46 @@ def build_thought_list_response(
     )
 
 
-def paginate_query(
-        query: Query,
+async def paginate_query(
+        db: AsyncSession,
+        query,
         limit: int,
         offset: int,
 ) -> tuple[list[ThoughtBase], int]:
 
-    items = (
+    items_result = await db.execute(
         query
         .offset(offset)
         .limit(limit)
-        .all()
     )
 
-    total = query.count()
+    items = items_result.scalars().all()
+
+    total_result = await db.execute(
+        select(func.count())
+        .select_from(query.subquery())
+    )
+
+    total = total_result.scalar_one()
 
     return items, total
 
 
 def apply_search(
-        query: Query,
+        query,
         search: str | None = None
-) -> Query:
+):
     
     if search:
-        query = query.filter(
+        query = query.where(
             ThoughtBase.text.ilike(f'%{search}%')
-        ) 
+        )
 
     return query
 
 
-def create_thought(
-        db: Session,
+async def create_thought(
+        db: AsyncSession,
         author_id: int,
         text: str,
         is_public: bool
@@ -135,14 +143,14 @@ def create_thought(
     )
 
     db.add(thought)
-    db.commit()
-    db.refresh(thought)
+    await db.commit()
+    await db.refresh(thought)
 
     return thought
 
 
-def update_thought(
-    db: Session,
+async def update_thought(
+    db: AsyncSession,
     thought: ThoughtBase,
     text: str | None = None,
     is_public: bool | None = None
@@ -153,15 +161,15 @@ def update_thought(
     if is_public is not None:
         thought.is_public = is_public
 
-    db.commit()
-    db.refresh(thought)
+    await db.commit()
+    await db.refresh(thought)
 
     return thought
 
 
-def delete_thought(
-    db: Session,
+async def delete_thought(
+    db: AsyncSession,
     thought: ThoughtBase
 ) -> None:
-    db.delete(thought)
-    db.commit()
+    await db.delete(thought)
+    await db.commit()
