@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Response
-from sqlalchemy.orm import Session
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.user import UserCreate, UserLogin
 from app.schemas.token import TokenResponse, RefreshTokenRequest
@@ -17,12 +18,18 @@ router = APIRouter()
 
 
 @router.post('/register', tags=['auth'], response_model=TokenResponse)
-def register(
+async def register(
     user: UserCreate, 
-    db: Session=Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
 
-    existing_user = db.query(UserBase).filter(UserBase.email == user.email).first()
+    result = await db.execute(
+        select(UserBase).where(
+            UserBase.email == user.email
+        )
+    )
+
+    existing_user = result.scalar_one_or_none()
 
     if existing_user:
         raise HTTPException(
@@ -40,26 +47,32 @@ def register(
     )
 
     db.add(new_user)
-    db.flush()
+    await db.flush()
 
     token_response = generate_tokens(
         user_id=new_user.id,
         db=db
     )
 
-    db.commit()
+    await db.commit()
 
     return token_response
 
 
 
 @router.post('/login', tags=['auth'], response_model=TokenResponse)
-def login(
+async def login(
     user: UserLogin,
-    db: Session=Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
 
-    log_user = db.query(UserBase).filter(UserBase.email == user.email).first()
+    result = await db.execute(
+        select(UserBase).where(
+            UserBase.email == user.email
+        )
+    )
+
+    log_user = result.scalar_one_or_none()
     
     if not log_user:
         raise HTTPException(
@@ -75,7 +88,7 @@ def login(
             db=db
         )
 
-        db.commit()
+        await db.commit()
 
         return token_response
     else:
@@ -86,12 +99,12 @@ def login(
 
 
 @router.post('/refresh', response_model=TokenResponse)
-def refresh(
+async def refresh(
     token: RefreshTokenRequest,
-    db: Session=Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
 
-    user_id, refresh_token_db = validate_refresh_token(
+    user_id, refresh_token_db = await validate_refresh_token(
         token=token.refresh_token,
         db=db
     )
@@ -103,25 +116,25 @@ def refresh(
 
     revoke_refresh_token(refresh_token_db=refresh_token_db)
 
-    db.commit()
+    await db.commit()
 
     return tokens
 
 
 @router.post('/logout', tags=['auth', 'logout'])
-def logout(
+async def logout(
     token: RefreshTokenRequest,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     
-    _, refresh_token_db = validate_refresh_token(
+    _, refresh_token_db = await validate_refresh_token(
         token=token.refresh_token,
         db=db
     )
 
     revoke_refresh_token(refresh_token_db=refresh_token_db)
 
-    db.commit()
+    await db.commit()
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
@@ -129,20 +142,21 @@ def logout(
 
 
 @router.post('/logout/all', tags=['auth', 'logout'])
-def logout_all(
+async def logout_all(
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
 
-    db.query(RefreshTokenBase).filter(
-        RefreshTokenBase.user_id == user.id,
-        RefreshTokenBase.revoked.is_(False)
-    ).update(
-        {'revoked': True},
-        synchronize_session=False
-    )
+    await db.execute(
+        update(RefreshTokenBase)
+        .where(
+            RefreshTokenBase.user_id == user.id,
+            RefreshTokenBase.revoked.is_(False)
+        )
+        .values(revoked=True)
+    )   
 
-    db.commit()
+    await db.commit()
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
