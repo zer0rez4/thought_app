@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status, HTTPException, Response, Depends, Query
-from sqlalchemy import or_, func
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import or_, select, func
+from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.thoughts import CreateThought, ThoughtResponse, UpdateThought, ThoughtListResponse
 from app.database.database import get_db
@@ -21,13 +22,13 @@ router = APIRouter()
 
 
 @router.post('/thoughts', tags=['thought'], response_model=ThoughtResponse)
-def thought_create(
+async def thought_create(
     thought: CreateThought,
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
 
-    new_thought = create_thought(
+    new_thought = await create_thought(
         db=db,
         author_id=user.id,
         text=thought.text,
@@ -40,13 +41,16 @@ def thought_create(
 
 
 @router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
-def random_thought(db: Session = Depends(get_db)):
-    thought = (
-        db.query(ThoughtBase)
-        .filter(ThoughtBase.is_public.is_(True))
+async def random_thought(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ThoughtBase)
+        .options(selectinload(ThoughtBase.author))
+        .where(ThoughtBase.is_public.is_(True))
         .order_by(func.random())
-        .first()
+        .limit(1)
     )
+
+    thought = result.scalar_one_or_none()
 
     if not thought:
         raise HTTPException(
@@ -60,21 +64,24 @@ def random_thought(db: Session = Depends(get_db)):
 
 
 @router.get('/thoughts/my', tags=['thought'], response_model=ThoughtListResponse)
-def my_thoughts(
+async def my_thoughts(
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(default=20, ge=1, le=20),
     offset: int = Query(default=0, ge=0),
     search: str | None = Query(default=None, min_length=1)
     ):
 
-    query = db.query(ThoughtBase).filter(
-        ThoughtBase.author_id == user.id
+    query = (
+        select(ThoughtBase)
+        .options(selectinload(ThoughtBase.author))
+        .where(ThoughtBase.author_id == user.id)
     )
 
     query = apply_search(query, search)
 
-    thoughts, total = paginate_query(
+    thoughts, total = await paginate_query(
+        db=db,
         query=query,
         limit=limit,
         offset=offset, 
@@ -89,13 +96,13 @@ def my_thoughts(
 
 
 @router.get('/thoughts/{thought_id}', tags=['thought'], response_model=ThoughtResponse)
-def thought_get(
+async def thought_get(
     thought_id: int,
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
     
-    thought = get_thought_by_id(db=db, thought_id=thought_id)
+    thought = await get_thought_by_id(db=db, thought_id=thought_id)
     
     check_thought_read_access(thought=thought, user=user)
 
@@ -105,18 +112,18 @@ def thought_get(
 
 
 @router.get('/thoughts', tags=['thought'], response_model=ThoughtListResponse)
-def get_thoughts(
+async def get_thoughts(
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(default=20, ge=1, le=20),
     offset: int = Query(default=0, ge=0),
     search: str | None = Query(default=None, min_length=1)
     ):
 
     query = (
-        db.query(ThoughtBase)
+        select(ThoughtBase)
         .options(selectinload(ThoughtBase.author))
-        .filter(
+        .where(
             or_(
                 ThoughtBase.is_public.is_(True),
                 ThoughtBase.author_id == user.id
@@ -126,7 +133,8 @@ def get_thoughts(
 
     query = apply_search(query, search)
 
-    thoughts, total = paginate_query(
+    thoughts, total = await paginate_query(
+        db=db,
         query=query,
         limit=limit,
         offset=offset
@@ -141,18 +149,18 @@ def get_thoughts(
 
 
 @router.patch('/thoughts/{thought_id}', tags=['thought'], response_model = ThoughtResponse)
-def change_thought(
+async def change_thought(
     thought_id: int,
     thought_update: UpdateThought,
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
 
-    thought = get_thought_by_id(db=db, thought_id=thought_id)
+    thought = await get_thought_by_id(db=db, thought_id=thought_id)
     
     check_thought_change_access(thought=thought, user=user)
 
-    updated_thought = update_thought(
+    updated_thought = await update_thought(
         db=db, 
         thought=thought, 
         text=thought_update.text, 
@@ -165,17 +173,17 @@ def change_thought(
 
 
 @router.delete('/thoughts/{thought_id}',  tags=['thought'])
-def thought_delete(
+async def thought_delete(
     thought_id: int,
     user: UserBase = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
     ):
 
-    thought = get_thought_by_id(db=db, thought_id=thought_id)
+    thought = await get_thought_by_id(db=db, thought_id=thought_id)
 
     check_thought_change_access(thought=thought, user=user)
 
-    delete_thought(
+    await delete_thought(
         db=db,
         thought=thought
     )

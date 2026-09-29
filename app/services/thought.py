@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import ThoughtBase, UserBase
@@ -13,6 +14,7 @@ async def get_thought_by_id(
     
     result = await db.execute(
         select(ThoughtBase)
+        .options(selectinload(ThoughtBase.author))
         .where(ThoughtBase.id == thought_id)
     )
 
@@ -144,7 +146,7 @@ async def create_thought(
 
     db.add(thought)
     await db.commit()
-    await db.refresh(thought)
+    await db.refresh(thought, attribute_names=["author"])
 
     return thought
 
