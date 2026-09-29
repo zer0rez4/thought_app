@@ -1,19 +1,21 @@
+from sqlalchemy import select
+
 from app.database.models import RefreshTokenBase
 from tests.helpers.data import DEFAULT_USER, DEFAULT_THOUGHT
 
 
 # ---------- DEFAULT ----------
-def register_user(client, **kwargs):
+async def register_user(client, **kwargs):
     data = DEFAULT_USER.copy()
     data.update(kwargs)
 
     if "name" in kwargs and kwargs["name"] is None:
         del data["name"]
     
-    return client.post('/register', json=data)
+    return await client.post('/register', json=data)
 
 
-def login_user(client, **kwargs):
+async def login_user(client, **kwargs):
     data = {
         "email": DEFAULT_USER["email"],
         "password": DEFAULT_USER["password"],
@@ -21,7 +23,7 @@ def login_user(client, **kwargs):
 
     data.update(kwargs)
 
-    return client.post("/login", json=data)
+    return await client.post("/login", json=data)
 
 
 def get_refresh_token(response):
@@ -37,8 +39,8 @@ def auth_headers(access_token):
 
 
 # ---------- AUTH ----------
-def refresh_user(client, refresh_token):
-    return client.post(
+async def refresh_user(client, refresh_token):
+    return await client.post(
         "/refresh",
         json={
             "refresh_token": refresh_token
@@ -46,8 +48,8 @@ def refresh_user(client, refresh_token):
     )
 
 
-def logout_user(client, refresh_token):
-    return client.post(
+async def logout_user(client, refresh_token):
+    return await client.post(
         "/logout",
         json={
             "refresh_token": refresh_token
@@ -55,29 +57,31 @@ def logout_user(client, refresh_token):
     )
 
 
-def delete_refresh_token_from_db(db, token):
-    refresh = (
-        db.query(RefreshTokenBase)
-        .filter(RefreshTokenBase.token == token)
-        .first()
+async def delete_refresh_token_from_db(db, token):
+    result = await db.execute(
+        select(RefreshTokenBase)
+        .where(RefreshTokenBase.token == token)
     )
 
-    db.delete(refresh)
-    db.commit()
+    refresh = result.scalar_one_or_none()
+
+
+    await db.delete(refresh)
+    await db.commit()
 
 
 # ---------- USERS ----------
-def get_users_me(client, access_token):
-    return client.get(
+async def get_users_me(client, access_token):
+    return await client.get(
         "/users/me",
         headers=auth_headers(access_token)
     )
 
 
-def update_user(client, access_token=None, new_name=None, is_private=None):
+async def update_user(client, access_token=None, new_name=None, is_private=None):
     headers = auth_headers(access_token) if access_token else None
 
-    return client.patch(
+    return await client.patch(
         "/users/me",
         json={
             "new_name": new_name,
@@ -87,14 +91,14 @@ def update_user(client, access_token=None, new_name=None, is_private=None):
     )
 
 
-def delete_user(client, access_token):
-    return client.delete(
+async def delete_user(client, access_token):
+    return await client.delete(
         "/users/me",
         headers=auth_headers(access_token)
     )
 
 
-def restore_user(client, **kwargs):
+async def restore_user(client, **kwargs):
     data = {
         "email": DEFAULT_USER["email"],
         "password": DEFAULT_USER["password"],
@@ -102,14 +106,14 @@ def restore_user(client, **kwargs):
 
     data.update(kwargs)
 
-    return client.post(
+    return await client.post(
         "/users/restore",
         json=data
     )
 
 
-def get_user(client, access_token, user_id, **kwargs):
-    return client.get(
+async def get_user(client, access_token, user_id, **kwargs):
+    return await client.get(
         f"/users/{user_id}",
         params=kwargs,
         headers=auth_headers(access_token)
@@ -117,8 +121,8 @@ def get_user(client, access_token, user_id, **kwargs):
 
 
 # ---------- THOUGHTS ----------
-def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public=DEFAULT_THOUGHT["is_public"]):
-    return client.post(
+async def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public=DEFAULT_THOUGHT["is_public"]):
+    return await client.post(
         "/thoughts",
         json={
             "text": text,
@@ -128,34 +132,34 @@ def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public
     )
 
 
-def get_my_thoughts(client, access_token, **kwargs):
-    return client.get(
+async def get_my_thoughts(client, access_token, **kwargs):
+    return await client.get(
         "/thoughts/my",
         headers=auth_headers(access_token),
         params=kwargs
     )
 
 
-def get_thought(client, access_token, thought_id, **kwargs):
-    return client.get(
+async def get_thought(client, access_token, thought_id, **kwargs):
+    return await client.get(
         f"/thoughts/{thought_id}",
         params=kwargs,
         headers=auth_headers(access_token)
     )
 
 
-def get_thoughts(client, access_token, **kwargs):
-    return client.get(
+async def get_thoughts(client, access_token, **kwargs):
+    return await client.get(
         "/thoughts",
         params=kwargs,
         headers=auth_headers(access_token)
     )
 
 
-def update_thought(client, access_token, thought_id, text=None, is_public=None):
+async def update_thought(client, access_token, thought_id, text=None, is_public=None):
     headers = auth_headers(access_token) if access_token else None
 
-    return client.patch(
+    return await client.patch(
         f"/thoughts/{thought_id}",
         json={
             "text": text,
@@ -165,8 +169,8 @@ def update_thought(client, access_token, thought_id, text=None, is_public=None):
     )
 
 
-def delete_thought(client, access_token, thought_id):
-    return client.delete(
+async def delete_thought(client, access_token, thought_id):
+    return await client.delete(
         f"/thoughts/{thought_id}",
         headers=auth_headers(access_token)
     )
