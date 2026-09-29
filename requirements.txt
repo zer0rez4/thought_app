@@ -33,6 +33,7 @@ pydantic-settings==2.13.1
 pydantic_core==2.41.5
 Pygments==2.20.0
 pytest==9.1.1
+pytest-asyncio==1.4.0
 python-dotenv==1.2.2
 python-jose==3.5.0
 rsa==4.9.1

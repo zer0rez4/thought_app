@@ -1,80 +1,83 @@
-import pytest
+import pytest_asyncio
 
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
+from httpx import AsyncClient, ASGITransport
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    async_sessionmaker,
+    AsyncSession
+)
 
 from app.main import app
 from app.database.database import get_db
-from app.database.models import Base, UserBase
-from app.database.models import Base, UserBase
+from app.database.models import Base
 from app.core.settings import settings
 from app.services.auth import generate_tokens
 
-from tests.helpers.data import DEFAULT_USER
-from tests.helpers.requests import (
-    register_user,
-    get_access_token,
-    get_refresh_token,
-    create_thought
-)
 from tests.factories.user import create_user_in_db
 from tests.factories.thought import create_thought_in_db
 
 
-engine = create_engine(settings.TEST_SQLALCHENY_DATABASE_URL)
+engine = create_async_engine(
+    settings.TEST_SQLALCHENY_DATABASE_URL
+)
 
-TestSessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine
+TestSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
 )
 
 
-@pytest.fixture(scope="session")
-def database():
-    Base.metadata.create_all(engine)
+@pytest_asyncio.fixture(scope="session")
+async def database():
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
 
     yield
 
-    Base.metadata.drop_all(engine)
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
 
 
-@pytest.fixture(scope='function')
-def db(database):
-    connection = engine.connect()
-    transaction = connection.begin()
+@pytest_asyncio.fixture(scope='function')
+async def db(database):
+    async with engine.connect() as connection:
+        transaction = await connection.begin()
 
-    db = TestSessionLocal(bind=connection)
+        async with TestSessionLocal(
+            bind=connection,
+            join_transaction_mode='create_savepoint'
+        ) as session:
+            yield session
 
-    try:
-        yield db
-    finally:
-        db.close()
-        transaction.rollback()
-        connection.close()
+        await transaction.rollback()
 
 
-@pytest.fixture(scope="function")
-def client(db):
-    def override_get_db():
+@pytest_asyncio.fixture(scope="function")
+async def client(db):
+    async def override_get_db():
         yield db
     
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test"
+    ) as client:
         yield client
 
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def authenticated_user(db):
-    def factory(**kwargs):
-        user = create_user_in_db(db, **kwargs)
+    async def factory(**kwargs):
+        user = await create_user_in_db(db, **kwargs)
         tokens = generate_tokens(user.id, db)
 
-        db.commit()
+        await db.commit()
 
         return {
             'user': user,
@@ -84,8 +87,8 @@ def authenticated_user(db):
     return factory
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def thought_factory(db):
-    def factory(author_id, **kwargs):
-        return create_thought_in_db(db, author_id, **kwargs)
+    async def factory(author_id, **kwargs):
+        return await create_thought_in_db(db, author_id, **kwargs)
     return factory
