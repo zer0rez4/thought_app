@@ -1,4 +1,6 @@
 import pytest_asyncio
+import pytest
+import asyncio
 
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import (
@@ -17,8 +19,13 @@ from tests.factories.user import create_user_in_db
 from tests.factories.thought import create_thought_in_db
 
 
+@pytest.fixture(scope="session")
+def event_loop_policy():
+    return asyncio.WindowsSelectorEventLoopPolicy()
+
+
 engine = create_async_engine(
-    settings.TEST_SQLALCHENY_DATABASE_URL
+    settings.TEST_SQLALCHEMY_DATABASE_URL
 )
 
 TestSessionLocal = async_sessionmaker(
