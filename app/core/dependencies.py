@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.database import get_db
 from app.database.models import UserBase
@@ -11,9 +12,9 @@ from app.services.user import check_user_active, get_user_by_id
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login") 
 
 
-def get_current_user(
+async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ) -> UserBase:
 
     payload = decode_token(token)
@@ -38,7 +39,7 @@ def get_current_user(
         detail='invalid token payload'
     )
 
-    user_data = get_user_by_id(db=db, user_id=user_id)
+    user_data = await get_user_by_id(db=db, user_id=user_id)
 
     check_user_active(user=user_data)
 
