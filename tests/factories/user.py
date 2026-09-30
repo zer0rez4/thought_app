@@ -17,7 +17,7 @@ async def create_user_in_db(
     )
 
     db.add(user)
-    await db.refresh(user)
+    await db.flush()
 
     return user
 

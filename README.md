@@ -183,6 +183,7 @@ thought_app/
 ├── alembic.ini
 ├── compose.yaml
 ├── Dockerfile
+├── pytest.ini
 ├── README.md
 └── requirements.txt
 ```
