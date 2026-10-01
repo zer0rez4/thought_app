@@ -1,3 +1,5 @@
+import pytest
+
 from tests.helpers.data import DEFAULT_USER, DEFAULT_THOUGHT
 
 from tests.helpers.requests import (
@@ -12,10 +14,13 @@ from tests.helpers.requests import (
 )
 
 # ---------- POST THOUGHTS ----------
-def test_post_thoughts_success(client, authenticated_user):
-    response = create_thought(
+@pytest.mark.asyncio
+async def test_post_thoughts_success(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await create_thought(
         client,
-        authenticated_user()['access_token']
+        user['access_token']
     )
 
     assert response.status_code == 200
@@ -28,10 +33,13 @@ def test_post_thoughts_success(client, authenticated_user):
     assert data["is_public"] == DEFAULT_THOUGHT["is_public"]
 
 
-def test_post_thoughts_with_none_text(client, authenticated_user):
-    response = create_thought(
+@pytest.mark.asyncio
+async def test_post_thoughts_with_none_text(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await create_thought(
         client,
-        authenticated_user()['access_token'],
+        user['access_token'],
         text=None
     )
 
@@ -42,10 +50,13 @@ def test_post_thoughts_with_none_text(client, authenticated_user):
     assert msg == 'Input should be a valid string'
 
 
-def test_post_thoughts_with_none_is_public(client, authenticated_user):
-    response = create_thought(
+@pytest.mark.asyncio
+async def test_post_thoughts_with_none_is_public(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await create_thought(
         client,
-        authenticated_user()['access_token'],
+        user['access_token'],
         is_public=None
     )
 
@@ -56,10 +67,13 @@ def test_post_thoughts_with_none_is_public(client, authenticated_user):
     assert msg == 'Input should be a valid boolean'
 
 
-def test_post_thoughts_with_space_text(client, authenticated_user):
-    response = create_thought(
+@pytest.mark.asyncio
+async def test_post_thoughts_with_space_text(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await create_thought(
         client,
-        authenticated_user()['access_token'],
+        user['access_token'],
         text="     "
     )
 
@@ -71,15 +85,16 @@ def test_post_thoughts_with_space_text(client, authenticated_user):
 
 
 # ---------- GET THOUGHTS/RANDOM ----------
-def test_get_random_thought_success(client, thought_factory, authenticated_user):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_random_thought_success(client, thought_factory, authenticated_user):
+    user = await authenticated_user()
 
     for _ in range(5):
-        thought_factory(
+        await thought_factory(
             author_id = user['user'].id
         )
 
-    response = client.get(
+    response = await client.get(
         "/thoughts/random"    
     )
 
@@ -91,16 +106,17 @@ def test_get_random_thought_success(client, thought_factory, authenticated_user)
     assert data['is_public'] is True
 
 
-def test_get_random_thought_no_public_thoughts(client, thought_factory, authenticated_user):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_random_thought_no_public_thoughts(client, thought_factory, authenticated_user):
+    user = await authenticated_user()
 
     for _ in range(5):
-        thought_factory(
+        await thought_factory(
             author_id = user['user'].id,
             is_public = False
         )
 
-    response = client.get(
+    response = await client.get(
         "/thoughts/random"    
     )
 
@@ -111,8 +127,9 @@ def test_get_random_thought_no_public_thoughts(client, thought_factory, authenti
     assert data['detail'] == 'No available public thoughts'
 
 
-def test_get_random_thought_with_no_thoughts(client):
-    response = client.get(
+@pytest.mark.asyncio
+async def test_get_random_thought_with_no_thoughts(client):
+    response = await client.get(
         "/thoughts/random"    
     )
 
@@ -123,14 +140,15 @@ def test_get_random_thought_with_no_thoughts(client):
     assert data['detail'] == 'No available public thoughts'
 
 
-def test_get_random_thought_with_deleted_user(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_random_thought_with_deleted_user(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought_factory(author_id = user['user'].id)
+    await thought_factory(author_id = user['user'].id)
 
-    delete_user(client, user['access_token'])
+    await delete_user(client, user['access_token'])
 
-    response = client.get("/thoughts/random")
+    response = await client.get("/thoughts/random")
 
     assert response.status_code == 200
 
@@ -141,16 +159,17 @@ def test_get_random_thought_with_deleted_user(client, authenticated_user, though
 
 
 # ---------- GET THOUGHTS/MY ----------
-def test_get_thoughts_my_success(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_thoughts_my_success(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
     for thought_is_public in [True, False]:
-        thought_factory(
+        await thought_factory(
             author_id = user['user'].id,
             is_public=thought_is_public
         )
 
-    response = get_my_thoughts(client, user['access_token'])
+    response = await get_my_thoughts(client, user['access_token'])
 
     assert response.status_code == 200
 
@@ -164,8 +183,11 @@ def test_get_thoughts_my_success(client, authenticated_user, thought_factory):
     assert {item["is_public"] for item in items} == {True, False}
 
 
-def test_get_thoughts_my_without_thoughts(client, authenticated_user):
-    response = get_my_thoughts(client, authenticated_user()['access_token'])
+@pytest.mark.asyncio
+async def test_get_thoughts_my_without_thoughts(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await get_my_thoughts(client, user['access_token'])
 
     assert response.status_code == 200
 
@@ -175,14 +197,15 @@ def test_get_thoughts_my_without_thoughts(client, authenticated_user):
     assert data["total"] == 0
 
 
-def test_get_thoughts_my_no_other_thoughts(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_get_thoughts_my_no_other_thoughts(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
-    thought_factory(author_id = user_1['user'].id)
-    thought_factory(author_id = user_2['user'].id)
+    await thought_factory(author_id = user_1['user'].id)
+    await thought_factory(author_id = user_2['user'].id)
 
-    response = get_my_thoughts(client, user_1['access_token'])
+    response = await get_my_thoughts(client, user_1['access_token'])
 
     assert response.status_code == 200
 
@@ -194,16 +217,17 @@ def test_get_thoughts_my_no_other_thoughts(client, authenticated_user, thought_f
 
 
 # ---------- GET THOUGHTS/{THOUGHT_ID} ----------
-def test_get_thoughts_thoughtid_success(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_get_thoughts_thoughtid_success(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
 
-    thought = thought_factory(
+    thought = await thought_factory(
         author_id = user_1["user"].id
     )
 
-    response = get_thought(
+    response = await get_thought(
         client,
         user_2['access_token'],
         thought_id=thought.id
@@ -219,10 +243,13 @@ def test_get_thoughts_thoughtid_success(client, authenticated_user, thought_fact
     assert data['is_public'] is True
 
 
-def test_get_thoughts_thoughtid_wrong_id(client, authenticated_user):
-    response = get_thought(
+@pytest.mark.asyncio
+async def test_get_thoughts_thoughtid_wrong_id(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await get_thought(
         client,
-        authenticated_user()['access_token'],
+        user['access_token'],
         thought_id=9999
     )
 
@@ -230,16 +257,17 @@ def test_get_thoughts_thoughtid_wrong_id(client, authenticated_user):
     assert response.json()['detail'] == 'thought does not exist'
 
 
-def test_get_thoughts_thoughtid_private_thought(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_get_thoughts_thoughtid_private_thought(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
-    thought = thought_factory(
+    thought = await thought_factory(
         author_id = user_1['user'].id,
         is_public = False
     )
 
-    response = get_thought(
+    response = await get_thought(
         client,
         user_2['access_token'],
         thought_id=thought.id
@@ -249,15 +277,16 @@ def test_get_thoughts_thoughtid_private_thought(client, authenticated_user, thou
     assert response.json()['detail'] == 'user has no rights'
 
 
-def test_get_thoughts_thoughtid_private_thought_owner(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_thoughts_thoughtid_private_thought_owner(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(
+    thought = await thought_factory(
         author_id = user['user'].id,
         is_public = False
     )
 
-    response = get_thought(
+    response = await get_thought(
         client,
         user['access_token'],
         thought_id=thought.id
@@ -274,22 +303,23 @@ def test_get_thoughts_thoughtid_private_thought_owner(client, authenticated_user
 
 
 # ---------- GET THOUGHTS ----------
-def test_get_thoughts_success(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_get_thoughts_success(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
 
-    thought_factory(
+    await thought_factory(
         author_id = user_1['user'].id,
         text = '1'
     )
 
-    thought_factory(
+    await thought_factory(
         author_id = user_2['user'].id,
         text = '2'
     )
 
-    response = get_thoughts(
+    response = await get_thoughts(
         client,
         user_1['access_token']
     )
@@ -304,17 +334,18 @@ def test_get_thoughts_success(client, authenticated_user, thought_factory):
     assert data['items'][1]['text'] == '2'
 
 
-def test_get_thoughts_no_public_thoughts(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_get_thoughts_no_public_thoughts(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
     for _ in range(3):
-        thought_factory(
+        await thought_factory(
             author_id = user_1['user'].id,
             is_public = False
         )
 
-    response = get_thoughts(
+    response = await get_thoughts(
         client,
         user_2['access_token']
     )
@@ -327,16 +358,17 @@ def test_get_thoughts_no_public_thoughts(client, authenticated_user, thought_fac
     assert data['total'] == 0
 
 
-def test_get_thoughts_private_thoughts_owner(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_get_thoughts_private_thoughts_owner(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
     for _ in range(3):
-        thought_factory(
+        await thought_factory(
             author_id = user['user'].id,
             is_public = False
         )
 
-    response = get_thoughts(
+    response = await get_thoughts(
         client,
         user['access_token']
     )
@@ -351,10 +383,13 @@ def test_get_thoughts_private_thoughts_owner(client, authenticated_user, thought
     assert all(item["is_public"] is False for item in data["items"])
 
 
-def test_get_thoughts_no_thoughts(client, authenticated_user):
-    response = get_thoughts(
+@pytest.mark.asyncio
+async def test_get_thoughts_no_thoughts(client, authenticated_user):
+    user = await authenticated_user()
+
+    response = await get_thoughts(
         client,
-        authenticated_user()['access_token']
+        user['access_token']
     )
 
     assert response.status_code == 200
@@ -366,12 +401,13 @@ def test_get_thoughts_no_thoughts(client, authenticated_user):
     
 
 # ---------- PATCH THOUGHTS/{THOUGHT_ID} ----------
-def test_patch_thought_change_text_success(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_patch_thought_change_text_success(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(author_id = user['user'].id)
+    thought = await thought_factory(author_id = user['user'].id)
 
-    response = update_thought(
+    response = await update_thought(
         client,
         user['access_token'],
         thought_id=thought.id,
@@ -386,12 +422,13 @@ def test_patch_thought_change_text_success(client, authenticated_user, thought_f
     assert data["id"] == thought.id
 
 
-def test_patch_thought_change_is_public_success(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_patch_thought_change_is_public_success(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(author_id = user['user'].id)
+    thought = await thought_factory(author_id = user['user'].id)
 
-    response = update_thought(
+    response = await update_thought(
         client,
         user['access_token'],
         thought_id=thought.id,
@@ -406,12 +443,13 @@ def test_patch_thought_change_is_public_success(client, authenticated_user, thou
     assert data["id"] == thought.id
 
 
-def test_patch_thought_empty_text(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_patch_thought_empty_text(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(author_id = user['user'].id)
+    thought = await thought_factory(author_id = user['user'].id)
 
-    response = update_thought(
+    response = await update_thought(
         client,
         user['access_token'],
         thought_id=thought.id,
@@ -425,13 +463,14 @@ def test_patch_thought_empty_text(client, authenticated_user, thought_factory):
     assert 'Text can not be empty' in data['detail'][0]['msg']
 
 
-def test_patch_thought_another_user(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_patch_thought_another_user(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
-    thought = thought_factory(author_id = user_1['user'].id)
+    thought = await thought_factory(author_id = user_1['user'].id)
 
-    response = update_thought(
+    response = await update_thought(
         client,
         user_2['access_token'],
         thought_id=thought.id,
@@ -442,12 +481,13 @@ def test_patch_thought_another_user(client, authenticated_user, thought_factory)
     assert response.json()['detail'] == "user has no rights"
 
 
-def test_patch_thought_with_none_params(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_patch_thought_with_none_params(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(author_id = user['user'].id)
+    thought = await thought_factory(author_id = user['user'].id)
 
-    response = update_thought(
+    response = await update_thought(
         client,
         user['access_token'],
         thought_id=thought.id,
@@ -464,12 +504,13 @@ def test_patch_thought_with_none_params(client, authenticated_user, thought_fact
 
 
 # ---------- DELETE THOUGHTS/{THOUGHT_ID} ----------
-def test_delete_thought_success(client, authenticated_user, thought_factory):
-    user = authenticated_user()
+@pytest.mark.asyncio
+async def test_delete_thought_success(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
 
-    thought = thought_factory(author_id = user['user'].id)
+    thought = await thought_factory(author_id = user['user'].id)
 
-    response = delete_thought(
+    response = await delete_thought(
         client,
         user['access_token'],
         thought_id=thought.id
@@ -477,27 +518,30 @@ def test_delete_thought_success(client, authenticated_user, thought_factory):
 
     assert response.status_code == 204
 
-    data = get_thought(
-        client,
-        user['access_token'],
-        thought_id=thought.id
-    ).json()
-
-    assert data['detail'] == 'thought does not exist'
-
-
-def test_delete_thought_twice(client, authenticated_user, thought_factory):
-    user = authenticated_user()
-
-    thought = thought_factory(author_id = user['user'].id)
-
-    delete_thought(
+    response = await get_thought(
         client,
         user['access_token'],
         thought_id=thought.id
     )
 
-    response = delete_thought(
+    data = response.json()
+
+    assert data['detail'] == 'thought does not exist'
+
+
+@pytest.mark.asyncio
+async def test_delete_thought_twice(client, authenticated_user, thought_factory):
+    user = await authenticated_user()
+
+    thought = await thought_factory(author_id = user['user'].id)
+
+    await delete_thought(
+        client,
+        user['access_token'],
+        thought_id=thought.id
+    )
+
+    response = await delete_thought(
         client,
         user['access_token'],
         thought_id=thought.id
@@ -507,13 +551,14 @@ def test_delete_thought_twice(client, authenticated_user, thought_factory):
     assert response.json()['detail'] == 'thought does not exist'
 
 
-def test_delete_thought_another_user(client, authenticated_user, thought_factory):
-    user_1 = authenticated_user()
-    user_2 = authenticated_user(email='test2@gmail.com', name='Test2')
+@pytest.mark.asyncio
+async def test_delete_thought_another_user(client, authenticated_user, thought_factory):
+    user_1 = await authenticated_user()
+    user_2 = await authenticated_user(email='test2@gmail.com', name='Test2')
 
-    thought = thought_factory(author_id = user_1['user'].id)
+    thought = await thought_factory(author_id = user_1['user'].id)
 
-    response = delete_thought(
+    response = await delete_thought(
         client,
         user_2['access_token'],
         thought_id=thought.id
