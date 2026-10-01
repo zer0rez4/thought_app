@@ -46,6 +46,7 @@ The project includes user authentication, access control, token management, data
 - Dockerized application with PostgreSQL
 - Alembic database migrations
 - Automated tests with Pytest
+- Asynchronous SQLAlchemy and asynchronous database sessions
 
 ## 🛠 Technologies
 
@@ -53,13 +54,14 @@ The project includes user authentication, access control, token management, data
 |-|-|
 | Python | Main programming language |
 | FastAPI | REST API development and dependency injection |
-| SQLAlchemy | ORM and database interaction |
+| SQLAlchemy | Async ORM and database interaction |
 | PostgreSQL | Relational database |
 | Alembic | Database schema migrations |
 | Docker | Application containerization |
 | Docker Compose | Multi-container application orchestration |
 | Pydantic | Data validation and serialization |
 | Pytest | Automated testing |
+| pytest-asyncio | Asynchronous test execution |
 | Pydantic Settings | Application configuration management |
 | Uvicorn | ASGI server for running the application |
 | python-jose | JWT token generation and validation |
@@ -116,6 +118,18 @@ To remove the containers and the database data:
 docker compose down -v
 ```
 
+## 🧪 Testing
+
+The project contains 80 automated tests covering authentication, users and thoughts.
+
+Tests use pytest, pytest-asyncio, HTTPX AsyncClient and an asynchronous SQLAlchemy session.
+
+Run the test suite:
+
+```bash
+python -m pytest
+```
+
 ## 🏗 Architecture
 
 The project follows a layered architecture approach:
@@ -126,7 +140,7 @@ FastAPI Router
    │
 Service Layer
    │
-SQLAlchemy ORM
+Async SQLAlchemy
    │
 PostgreSQL
 ```
@@ -172,9 +186,18 @@ thought_app/
 │
 ├── tests/
 │   │
+│   ├── factories/
+│   │   ├── thought.py
+│   │   └── user.py
+│   │
+│   ├── helpers/
+│   │   ├── assertions.py
+│   │   ├── data.py
+│   │   └── requests.py
+│   │
 │   ├── conftest.py
-│   ├── helpers.py
 │   ├── test_auth.py
+│   ├── test_thought.py
 │   └── test_user.py
 │
 ├── .dockerignore
@@ -251,5 +274,5 @@ The application uses JWT-based authentication with access and refresh tokens.
 
 - Access tokens are used for API authorization
 - Refresh tokens are stored in the database
+- Each refresh request revokes the current refresh token and issues a new access/refresh token pair
 - Refresh tokens can be revoked during logout
-- Refresh token rotation is used to improve security
