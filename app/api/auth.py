@@ -4,20 +4,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.user import UserCreate, UserLogin
 from app.schemas.token import TokenResponse, RefreshTokenRequest
+from app.schemas.response import MessageResponse
 from app.core.security import hash_password, verify_password
 from app.core.dependencies import get_current_user
+from app.core.settings import settings
 from app.database.database import get_db
 from app.database.models import UserBase, RefreshTokenBase
 from app.services.user import check_user_active
 from app.services.auth import (
     generate_tokens, 
     validate_refresh_token,
-    revoke_refresh_token)
+    revoke_refresh_token
+)
+from app.services.email_token import create_email_token
+from app.services.email import send_email
+from app.utils.templates import render_email_template
 
 router = APIRouter()
 
 
-@router.post('/register', tags=['auth'], response_model=TokenResponse)
+@router.post(
+        '/register', 
+        tags=['auth'], 
+        response_model=MessageResponse,
+        status_code=status.HTTP_201_CREATED
+)
 async def register(
     user: UserCreate, 
     db: AsyncSession = Depends(get_db)
@@ -43,20 +54,45 @@ async def register(
         email = user.email,
         hashed_password = password_hash,  
         name = user.name
-
     )
 
     db.add(new_user)
     await db.flush()
 
-    token_response = generate_tokens(
-        user_id=new_user.id,
-        db=db
+    token = await create_email_token(
+        db = db,
+        user_id = new_user.id,
+        purpose='email_verification'
     )
 
     await db.commit()
 
-    return token_response
+    verification_link = (
+        f"{settings.VERIFY_EMAIL_URL}?token={token}"
+    )
+
+    html = render_email_template(
+        template_name="email/verify_email.html",
+        verification_link=verification_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+    )
+
+    text = render_email_template(
+        template_name="email/verify_email.txt",
+        verification_link=verification_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+    )
+
+    await send_email(
+        recipient=new_user.email,
+        subject='Confirm your email',
+        text_body=text,
+        html_body=html
+    )
+
+    return MessageResponse(
+        detail="Registration successful. Check your email."
+    )
 
 
 

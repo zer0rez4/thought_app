@@ -1,0 +1,6 @@
+Thanks for registering.
+
+Please confirm your email address:
+{{ verification_link }}
+
+This link expires in {{ expire_time }} minutes.

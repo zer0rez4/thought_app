@@ -15,10 +15,12 @@ class Settings(BaseSettings):
     EMAIL_TOKEN_EXPIRE_MINUTES: int = 10
 
     SMTP_HOST: str
-    SMTP_PORT: str
+    SMTP_PORT: int
     SMTP_USER: str
     SMTP_PASSWORD: str
     SMTP_FROM: str
+
+    VERIFY_EMAIL_URL: str
 
     SQLALCHEMY_DATABASE_URL: str
     TEST_SQLALCHEMY_DATABASE_URL: str

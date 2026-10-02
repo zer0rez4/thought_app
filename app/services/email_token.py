@@ -35,7 +35,7 @@ async def create_email_token(
 
     db.add(new_token)
     
-    return token, new_token
+    return token
 
 
 async def validate_email_token(
