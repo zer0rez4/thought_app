@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
+    EMAIL_TOKEN_EXPIRE_MINUTES: int = 10
+
+    SMTP_HOST: str
+    SMTP_PORT: str
+    SMTP_USER: str
+    SMTP_PASSWORD: str
+    SMTP_FROM: str
+
     SQLALCHEMY_DATABASE_URL: str
     TEST_SQLALCHEMY_DATABASE_URL: str
 

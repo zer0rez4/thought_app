@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify email</title>
+</head>
+<body style="font-family: Arial, sans-serif;">
+    <h2 style="text-align: center;">Welcome to Thoughts API</h2>
+
+    <p>
+        Thanks for registering.
+        Please confirm your email address.
+    </p>
+
+    <a href="{{ verification_link }}"
+       style="
+       display:inline-block;
+       padding:12px 20px;
+       background:#2563eb;
+       color:white;
+       text-decoration:none;
+       border-radius:6px;
+       ">
+        Verify email
+    </a>
+
+    <p>
+        This link expires in 10 minutes.
+    </p>
+</body>
+</html>
