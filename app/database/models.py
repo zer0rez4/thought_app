@@ -15,6 +15,7 @@ class UserBase(Base):
     name = Column(String, nullable=False)
     is_private = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    email_verified = Column(Boolean, default=False, nullable=False)
 
     thoughts = relationship('ThoughtBase', back_populates='author')
 
@@ -39,3 +40,14 @@ class RefreshTokenBase(Base):
     expires_at = Column(DateTime, nullable=False)
     revoked = Column(Boolean, default=False)
 
+
+class EmailTokenBase(Base):
+    __tablename__ = 'email_tokens'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String, nullable=False)
+    purpose = Column(String, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used_at = Column(DateTime)
+    created_at = Column(DateTime, nullable=False)
