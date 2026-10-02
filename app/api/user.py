@@ -4,11 +4,13 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
-from app.core.security import verify_password
 from app.schemas.user import UserUpdate, UserResponse, UserProfileResponse, UserRestore
 from app.database.database import get_db
 from app.database.models import UserBase, ThoughtBase
-from app.services.user import get_user_by_id
+from app.services.user import (
+    get_user_by_id, 
+    restore_user
+)
 from app.services.thought import (
     build_thought_list_response, 
     paginate_query,
@@ -70,39 +72,16 @@ async def delete_user(
 
 
 @router.post('/users/restore', tags=['users'])
-async def restore_user(
+async def restore_user_endpoint(
     user_data: UserRestore,
     db: AsyncSession = Depends(get_db)
 ):
- 
-    result = await db.execute(
-        select(UserBase).where(
-            UserBase.email == user_data.email
-        )
+
+    await restore_user(
+        db = db,
+        user_email = user_data.email,
+        password = user_data.password
     )
-
-    user = result.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'User does not exist'
-        )
-
-    if user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail='account is already active'
-        )
-
-    if not verify_password(user_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="password is incorrect"
-        )
-
-    user.is_active = True
-    await db.commit()
 
     return Response(status_code=status.HTTP_200_OK)
 
