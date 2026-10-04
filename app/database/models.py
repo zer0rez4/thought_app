@@ -17,7 +17,14 @@ class UserBase(Base):
     is_active = Column(Boolean, default=True)
     email_verified = Column(Boolean, default=False, nullable=False)
 
-    thoughts = relationship('ThoughtBase', back_populates='author')
+    thoughts = relationship(
+        'ThoughtBase', 
+        back_populates='author'
+    )
+    email_tokens = relationship(
+        "EmailTokenBase",
+        back_populates="user"
+    )
 
 
 class ThoughtBase(Base):
@@ -51,3 +58,7 @@ class EmailTokenBase(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), nullable=False)
+    user = relationship(
+        "UserBase",
+        back_populates="email_tokens"
+    )
