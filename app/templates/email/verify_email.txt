@@ -1,6 +1,10 @@
-Thanks for registering.
+Привет, {{ user_name }}
 
-Please confirm your email address:
+Спасибо за регистрацию в Thoughts API.
+Осталось подтвердить адрес электронной почты,
+чтобы завершить регистрацию.
 {{ verification_link }}
 
-This link expires in {{ expire_time }} minutes.
+Ссылка действительна в течение {{ expire_time }} минут.
+
+Если вы не регистрировались в Thoughts API, просто проигнорируйте это письмо.

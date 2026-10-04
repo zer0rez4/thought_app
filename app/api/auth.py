@@ -78,6 +78,7 @@ async def register(
 
     await send_verification_email(
         recipient=new_user.email,
+        user_name=new_user.name,
         token=token
     )
 
@@ -130,6 +131,7 @@ async def resend_verification(
 
     await send_verification_email(
         recipient=user.email,
+        user_name=user.email,
         token=token
     )
 

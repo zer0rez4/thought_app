@@ -40,6 +40,7 @@ async def send_email(
 
 async def send_verification_email(
     recipient: str,
+    user_name: str,
     token: str
 ) -> None:
 
@@ -50,13 +51,15 @@ async def send_verification_email(
     html = render_email_template(
         template_name="email/verify_email.html",
         verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
     )
 
     text = render_email_template(
         template_name="email/verify_email.txt",
         verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
     )
 
     await send_email(
