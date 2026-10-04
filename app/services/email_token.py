@@ -81,3 +81,10 @@ async def validate_email_token(
 
     return token_from_db
 
+
+def invalidate_token(
+        token: EmailTokenBase
+) -> None:
+
+    token.used_at = datetime.now(timezone.utc)
+

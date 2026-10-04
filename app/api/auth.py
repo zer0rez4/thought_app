@@ -16,9 +16,13 @@ from app.services.auth import (
     validate_refresh_token,
     revoke_refresh_token
 )
-from app.services.email_token import create_email_token
+from app.services.email_token import (
+    create_email_token, validate_email_token,
+    invalidate_token
+)
 from app.services.email import send_email
 from app.utils.templates import render_email_template
+
 
 router = APIRouter()
 
@@ -92,6 +96,46 @@ async def register(
 
     return MessageResponse(
         detail="Registration successful. Check your email."
+    )
+
+
+@router.get('/auth/verify-email',
+            tags=['auth'], 
+            response_model=MessageResponse,
+            status_code=status.HTTP_200_OK
+)
+async def verify_email(
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+
+    token_from_db = await validate_email_token(
+        db = db,
+        token = token,
+        purpose = 'email_verification'
+    )
+
+    invalidate_token(token=token_from_db,)
+
+    result = await db.execute(
+        select(UserBase)
+        .where(UserBase.id == token_from_db.user_id)
+    )
+
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='User not found'
+        )
+
+    user.email_verified = True
+
+    await db.commit()
+
+    return MessageResponse(
+        detail = 'email confirmed'
     )
 
 

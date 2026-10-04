@@ -37,7 +37,7 @@ class RefreshTokenBase(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     token = Column(String, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked = Column(Boolean, default=False)
 
 
@@ -48,6 +48,6 @@ class EmailTokenBase(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     token_hash = Column(String, nullable=False)
     purpose = Column(String, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
-    used_at = Column(DateTime)
-    created_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), nullable=False)
