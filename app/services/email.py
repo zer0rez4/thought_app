@@ -3,6 +3,7 @@ import aiosmtplib
 from email.message import EmailMessage
 
 from app.core.settings import settings
+from app.utils.templates import render_email_template
 
 
 async def send_email(
@@ -34,4 +35,33 @@ async def send_email(
         start_tls=True,
         username=settings.SMTP_USER,
         password=settings.SMTP_PASSWORD
+    )
+
+
+async def send_verification_email(
+    recipient: str,
+    token: str
+) -> None:
+
+    verification_link = (
+        f"{settings.VERIFY_EMAIL_URL}?token={token}"
+    )
+
+    html = render_email_template(
+        template_name="email/verify_email.html",
+        verification_link=verification_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+    )
+
+    text = render_email_template(
+        template_name="email/verify_email.txt",
+        verification_link=verification_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
+    )
+
+    await send_email(
+        recipient=recipient,
+        subject='Confirm your email',
+        text_body=text,
+        html_body=html
     )

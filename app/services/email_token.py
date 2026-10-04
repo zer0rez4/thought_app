@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import select, and_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
@@ -88,3 +88,52 @@ def invalidate_token(
 
     token.used_at = datetime.now(timezone.utc)
 
+
+async def check_resend_cooldown(
+        db: AsyncSession,
+        user_id: int,
+        purpose: str
+) -> None:
+
+    result = await db.execute(
+        select(EmailTokenBase)
+        .where(
+            EmailTokenBase.user_id == user_id,
+            EmailTokenBase.purpose == purpose
+        )
+        .order_by(EmailTokenBase.created_at.desc())
+        .limit(1)
+    )
+
+    last_token = result.scalar_one_or_none()
+
+    if last_token is None:
+        return
+
+    current_time = datetime.now(timezone.utc)
+    cooldown = timedelta(seconds=settings.RESEND_VERIFICATION_COOLDOWN_SECONDS)
+
+    if current_time < last_token.created_at + cooldown:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail='Please wait before requesting another email'
+        )
+
+
+async def delete_user_verification_tokens(
+        db: AsyncSession,
+        user_id: int,
+        purpose: str
+) -> None:
+
+    stmt = (
+        delete(EmailTokenBase)
+        .where(
+            and_(
+                EmailTokenBase.user_id == user_id,
+                EmailTokenBase.purpose == purpose
+            )
+        )
+    )
+
+    await db.execute(stmt)

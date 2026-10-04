@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     EMAIL_TOKEN_EXPIRE_MINUTES: int = 10
+    RESEND_VERIFICATION_COOLDOWN_SECONDS: int = 60
 
     SMTP_HOST: str
     SMTP_PORT: int

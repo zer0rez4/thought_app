@@ -5,12 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user import UserCreate, UserLogin
 from app.schemas.token import TokenResponse, RefreshTokenRequest
 from app.schemas.response import MessageResponse
+from app.schemas.email import EmailRequest
 from app.core.security import hash_password, verify_password
 from app.core.dependencies import get_current_user
-from app.core.settings import settings
 from app.database.database import get_db
 from app.database.models import UserBase, RefreshTokenBase
-from app.services.user import check_user_active, check_user_verified_email
+from app.services.user import (
+    check_user_active, check_user_verified_email,
+    get_user_by_email
+)
 from app.services.auth import (
     generate_tokens, 
     validate_refresh_token,
@@ -18,13 +21,15 @@ from app.services.auth import (
 )
 from app.services.email_token import (
     create_email_token, validate_email_token,
-    invalidate_token
+    invalidate_token, delete_user_verification_tokens,
+    check_resend_cooldown
 )
-from app.services.email import send_email
-from app.utils.templates import render_email_template
+from app.services.email import send_verification_email
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix='/auth'
+)
 
 
 @router.post(
@@ -71,27 +76,9 @@ async def register(
 
     await db.commit()
 
-    verification_link = (
-        f"{settings.VERIFY_EMAIL_URL}?token={token}"
-    )
-
-    html = render_email_template(
-        template_name="email/verify_email.html",
-        verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
-    )
-
-    text = render_email_template(
-        template_name="email/verify_email.txt",
-        verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES
-    )
-
-    await send_email(
+    await send_verification_email(
         recipient=new_user.email,
-        subject='Confirm your email',
-        text_body=text,
-        html_body=html
+        token=token
     )
 
     return MessageResponse(
@@ -99,10 +86,65 @@ async def register(
     )
 
 
-@router.get('/auth/verify-email',
-            tags=['auth'], 
-            response_model=MessageResponse,
-            status_code=status.HTTP_200_OK
+@router.post(
+        '/resend-verification', 
+        tags=['auth'], 
+        response_model=MessageResponse,
+        status_code=status.HTTP_200_OK
+)
+async def resend_verification(
+    email: EmailRequest,
+    db: AsyncSession = Depends(get_db)
+):
+
+    user = await get_user_by_email(
+        db=db,
+        user_email=email.email
+    )
+
+    if user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='email is already verified'
+        )
+
+    await check_resend_cooldown(
+        db=db,
+        user_id=user.id,
+        purpose='email_verification'
+    )
+
+    await delete_user_verification_tokens(
+        db=db,
+        user_id=user.id,
+        purpose='email_verification'
+    )
+
+    token = await create_email_token(
+        db = db,
+        user_id = user.id,
+        purpose='email_verification'
+    )
+
+    await db.commit()
+
+    await send_verification_email(
+        recipient=user.email,
+        token=token
+    )
+
+    
+    return MessageResponse(
+            detail="Verification email sent. Check your email."
+        )
+
+
+
+@router.get(
+        '/verify-email',
+        tags=['auth'], 
+        response_model=MessageResponse,
+        status_code=status.HTTP_200_OK
 )
 async def verify_email(
     token: str,
