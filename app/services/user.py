@@ -84,3 +84,14 @@ def check_user_active(
             status_code=status.HTTP_403_FORBIDDEN,
             detail='account is deleted'
         )
+
+
+def check_user_verified_email(
+        user: UserBase
+) -> None:
+
+    if not user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='email is not verified'
+        )

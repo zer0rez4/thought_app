@@ -10,7 +10,7 @@ from app.core.dependencies import get_current_user
 from app.core.settings import settings
 from app.database.database import get_db
 from app.database.models import UserBase, RefreshTokenBase
-from app.services.user import check_user_active
+from app.services.user import check_user_active, check_user_verified_email
 from app.services.auth import (
     generate_tokens, 
     validate_refresh_token,
@@ -140,7 +140,11 @@ async def verify_email(
 
 
 
-@router.post('/login', tags=['auth'], response_model=TokenResponse)
+@router.post(
+        '/login', 
+        tags=['auth'], 
+        response_model=TokenResponse
+)
 async def login(
     user: UserLogin,
     db: AsyncSession = Depends(get_db)
@@ -160,22 +164,23 @@ async def login(
             detail = 'User does not exist'
         )
 
-    check_user_active(user=log_user)
-
-    if verify_password(user.password, log_user.hashed_password):
-        token_response = generate_tokens(
-            user_id=log_user.id,
-            db=db
-        )
-
-        await db.commit()
-
-        return token_response
-    else:
+    if not verify_password(user.password, log_user.hashed_password):
         raise HTTPException(
-            status_code = status.HTTP_401_UNAUTHORIZED,
-            detail = 'password is incorrect'
-        )
+                    status_code = status.HTTP_401_UNAUTHORIZED,
+                    detail = 'password is incorrect'
+                )
+    
+    check_user_active(user=log_user)
+    check_user_verified_email(user=log_user)
+
+    token_response = generate_tokens(
+        user_id=log_user.id,
+        db=db
+    )
+
+    await db.commit()
+
+    return token_response
 
 
 @router.post('/refresh', response_model=TokenResponse)
