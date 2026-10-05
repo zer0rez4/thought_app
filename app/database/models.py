@@ -53,7 +53,7 @@ class EmailTokenBase(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    token_hash = Column(String, nullable=False)
+    token_hash = Column(String, nullable=False, index=True)
     purpose = Column(String, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     used_at = Column(DateTime(timezone=True))
