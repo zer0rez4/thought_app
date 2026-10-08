@@ -6,10 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.database import get_db
 from app.database.models import UserBase
 from app.core.jwt import decode_token
-from app.services.user import check_user_active, get_user_by_id
+from app.services.user import (
+    check_user_active, get_user_by_id,
+    check_user_verified_email
+)
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login") 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login") 
 
 
 async def get_current_user(
@@ -41,6 +44,7 @@ async def get_current_user(
 
     user_data = await get_user_by_id(db=db, user_id=user_id)
 
+    check_user_verified_email(user=user_data)
     check_user_active(user=user_data)
 
     return user_data

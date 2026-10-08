@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, field_validator, Field
 from app.schemas.thoughts import ThoughtListResponse
+from app.utils.validators import validate_password
 
 
 class UserCreate(BaseModel):
@@ -7,12 +8,9 @@ class UserCreate(BaseModel):
     password: str = Field(..., min_length=6)
     name: str
 
-    @field_validator('password')
-    @classmethod
-    def check_password(cls, password: str) -> str:
-        if not password.strip():
-            raise ValueError('The password can not be empty')
-        return password
+    _validate_password = field_validator('password')(
+        validate_password
+    )
 
     @field_validator('name')
     @classmethod

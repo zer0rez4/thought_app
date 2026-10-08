@@ -5,14 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.user import UserCreate, UserLogin
 from app.schemas.token import TokenResponse, RefreshTokenRequest
 from app.schemas.response import MessageResponse
-from app.schemas.email import EmailRequest
+from app.schemas.email import EmailRequest, PasswordResetRequest
 from app.core.security import hash_password, verify_password
 from app.core.dependencies import get_current_user
+from app.core.settings import settings
 from app.database.database import get_db
 from app.database.models import UserBase, RefreshTokenBase
 from app.services.user import (
     check_user_active, check_user_verified_email,
-    get_user_by_email
+    get_user_by_email, get_user_by_id
 )
 from app.services.auth import (
     generate_tokens, 
@@ -21,10 +22,12 @@ from app.services.auth import (
 )
 from app.services.email_token import (
     create_email_token, validate_email_token,
-    invalidate_token, delete_user_verification_tokens,
+    invalidate_token, delete_user_tokens_by_purpose,
     check_resend_cooldown
 )
-from app.services.email import send_verification_email
+from app.services.email import (
+    send_verification_email, send_reset_password_email
+)
 
 
 router = APIRouter(
@@ -112,10 +115,11 @@ async def resend_verification(
     await check_resend_cooldown(
         db=db,
         user_id=user.id,
-        purpose='email_verification'
+        purpose='email_verification',
+        time_delta=settings.RESEND_VERIFICATION_COOLDOWN_SECONDS
     )
 
-    await delete_user_verification_tokens(
+    await delete_user_tokens_by_purpose(
         db=db,
         user_id=user.id,
         purpose='email_verification'
@@ -131,7 +135,7 @@ async def resend_verification(
 
     await send_verification_email(
         recipient=user.email,
-        user_name=user.email,
+        user_name=user.name,
         token=token
     )
 
@@ -159,20 +163,12 @@ async def verify_email(
         purpose = 'email_verification'
     )
 
-    invalidate_token(token=token_from_db,)
+    invalidate_token(token=token_from_db)
 
-    result = await db.execute(
-        select(UserBase)
-        .where(UserBase.id == token_from_db.user_id)
+    user = await get_user_by_id(
+        db=db,
+        user_id=token_from_db.user_id
     )
-
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='User not found'
-        )
 
     user.email_verified = True
 
@@ -290,3 +286,129 @@ async def logout_all(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
     )
+
+
+@router.post(
+    '/reset-password',
+    tags=['auth'],
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK
+)
+async def reset_password(
+    email: EmailRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    
+    user = await get_user_by_email(
+        db=db, 
+        user_email=email.email
+    )
+
+    await check_resend_cooldown(
+        db=db,
+        user_id=user.id,
+        purpose="reset_password",
+        time_delta=settings.RESEND_RESET_PASSWORD_COOLDOWN_SECONDS
+    )
+
+    token = await create_email_token(
+        db = db,
+        user_id = user.id,
+        purpose = "reset_password"
+    )
+
+    await db.commit()
+
+    await send_reset_password_email(
+        recipient=email.email,
+        user_name=user.name,
+        token=token
+    )
+
+    return MessageResponse(
+        detail='Reset email sent. Check your email.'
+    )
+
+
+@router.post(
+    '/resend-reset-password',
+    tags=['auth'],
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK
+)
+async def resend_reset_password(
+    email: EmailRequest,
+    db: AsyncSession = Depends(get_db)
+):
+
+    user = await get_user_by_email(
+        db=db,
+        user_email=email.email
+    )
+
+    await check_resend_cooldown(
+        db=db,
+        user_id=user.id,
+        purpose='reset_password',
+        time_delta=settings.RESEND_RESET_PASSWORD_COOLDOWN_SECONDS
+    )
+
+    await delete_user_tokens_by_purpose(
+        db=db,
+        user_id=user.id,
+        purpose='reset_password'
+    )
+
+    token = await create_email_token(
+        db=db,
+        user_id=user.id,
+        purpose='reset_password'
+    )
+
+    await db.commit()
+
+    await send_reset_password_email(
+        recipient=user.email,
+        user_name=user.name,
+        token=token
+    )
+
+    return MessageResponse(
+        detail='Reset email sent. Check your email.'
+    )
+
+
+@router.post(
+    '/set-new-password',
+    tags=['auth'],
+    response_model=MessageResponse,
+    status_code=status.HTTP_200_OK
+)
+async def set_new_password(
+    data: PasswordResetRequest,
+    db: AsyncSession = Depends(get_db)
+):
+
+    token_from_db = await validate_email_token(
+        db = db,
+        token = data.token,
+        purpose = 'reset_password'
+    )
+
+    user = await get_user_by_id(
+        db=db,
+        user_id=token_from_db.user_id
+    )
+
+    user.hashed_password = hash_password(data.new_password)
+
+    invalidate_token(token=token_from_db)
+
+    await db.commit()
+
+    return MessageResponse(
+        detail='Password successfully changed'
+    )
+
+    
+

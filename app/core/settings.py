@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     EMAIL_TOKEN_EXPIRE_MINUTES: int = 10
     RESEND_VERIFICATION_COOLDOWN_SECONDS: int = 60
+    RESEND_RESET_PASSWORD_COOLDOWN_SECONDS: int = 600
 
     SMTP_HOST: str
     SMTP_PORT: int
@@ -22,6 +23,7 @@ class Settings(BaseSettings):
     SMTP_FROM: str
 
     VERIFY_EMAIL_URL: str
+    RESET_PASSWORD_URL: str
 
     SQLALCHEMY_DATABASE_URL: str
     TEST_SQLALCHEMY_DATABASE_URL: str

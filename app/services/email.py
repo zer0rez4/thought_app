@@ -64,7 +64,39 @@ async def send_verification_email(
 
     await send_email(
         recipient=recipient,
-        subject='Confirm your email',
+        subject='Подтверждение аккаунта Thoughts app',
+        text_body=text,
+        html_body=html
+    )
+
+
+async def send_reset_password_email(
+    recipient: str,
+    user_name: str,
+    token: str
+) -> None:
+
+    reset_password_link = (
+        f"{settings.RESET_PASSWORD_URL}?token={token}"
+    )
+
+    html = render_email_template(
+        template_name="email/reset_password_email.html",
+        reset_password_link=reset_password_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
+    )
+
+    text = render_email_template(
+        template_name="email/reset_password_email.txt",
+        reset_password_link=reset_password_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
+    )
+
+    await send_email(
+        recipient=recipient,
+        subject='Сброс пароля Thoughts app',
         text_body=text,
         html_body=html
     )

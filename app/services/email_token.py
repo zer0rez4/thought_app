@@ -92,7 +92,8 @@ def invalidate_token(
 async def check_resend_cooldown(
         db: AsyncSession,
         user_id: int,
-        purpose: str
+        purpose: str,
+        time_delta: int
 ) -> None:
 
     result = await db.execute(
@@ -111,7 +112,7 @@ async def check_resend_cooldown(
         return
 
     current_time = datetime.now(timezone.utc)
-    cooldown = timedelta(seconds=settings.RESEND_VERIFICATION_COOLDOWN_SECONDS)
+    cooldown = timedelta(seconds=time_delta)
 
     if current_time < last_token.created_at + cooldown:
         raise HTTPException(
@@ -120,7 +121,7 @@ async def check_resend_cooldown(
         )
 
 
-async def delete_user_verification_tokens(
+async def delete_user_tokens_by_purpose(
         db: AsyncSession,
         user_id: int,
         purpose: str
