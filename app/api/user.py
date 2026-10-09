@@ -1,21 +1,33 @@
-from fastapi import APIRouter, status, HTTPException, Depends, Response, Query
+from fastapi import APIRouter, status, HTTPException, Depends, Query
 from sqlalchemy import and_, select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
-from app.schemas.user import UserUpdate, UserResponse, UserProfileResponse, UserRestore
+from app.core.settings import settings
+from app.schemas.user import (
+    UserUpdate, UserResponse, 
+    UserProfileResponse
+)
+from app.schemas.response import MessageResponse
+from app.schemas.email import EmailRequest
 from app.database.database import get_db
 from app.database.models import UserBase, ThoughtBase
 from app.services.user import (
-    get_user_by_id, 
-    restore_user
+    get_user_by_id, restore_user,
+    get_user_by_email
 )
 from app.services.thought import (
     build_thought_list_response, 
     paginate_query,
     apply_search
 )
+from app.services.email_token import (
+    create_email_token, delete_user_tokens_by_purpose,
+    validate_email_token, invalidate_token,
+    check_resend_cooldown
+)
+from app.services.email import send_restore_email
 
 
 router = APIRouter()
@@ -59,7 +71,11 @@ async def user_update(
     return result
 
 
-@router.delete('/users/me', tags=['users', 'me'])
+@router.delete(
+        '/users/me', 
+        tags=['users', 'me'],
+        status_code=status.HTTP_204_NO_CONTENT
+)
 async def delete_user(
     user: UserBase = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -68,22 +84,89 @@ async def delete_user(
     user.is_active = False
     await db.commit()
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-
-@router.post('/users/restore', tags=['users'])
-async def restore_user_endpoint(
-    user_data: UserRestore,
+@router.post(
+        '/users/restore', 
+        tags=['users', 'restore'],
+        response_model=MessageResponse,
+        status_code=status.HTTP_200_OK
+)
+async def request_account_restore(
+    data: EmailRequest,
     db: AsyncSession = Depends(get_db)
 ):
 
-    await restore_user(
-        db = db,
-        user_email = user_data.email,
-        password = user_data.password
+    user = await get_user_by_email(
+        db=db,
+        user_email=data.email
     )
 
-    return Response(status_code=status.HTTP_200_OK)
+    if user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail='account is already active'
+        )
+
+    await check_resend_cooldown(
+        db=db,
+        user_id=user.id,
+        purpose='account_restore',
+        time_delta=settings.RESEND_RESTORE_ACCOUNT_COOLDOWN_SECONDS
+    )
+
+    await delete_user_tokens_by_purpose(
+        db=db,
+        user_id=user.id,
+        purpose='account_restore'
+    )
+
+    token = await create_email_token(
+        db=db,
+        user_id=user.id,
+        purpose='account_restore'
+    )
+
+    await db.commit()
+
+    await send_restore_email(
+        recipient=user.email,
+        user_name=user.name,
+        token=token
+    )
+
+    return MessageResponse(
+        detail='Restore email sent. Check your email.'
+    )
+
+
+@router.get(
+        '/users/restore',
+        tags=['users', 'restore'],
+        response_model=MessageResponse
+)
+async def confirm_restore_user(
+    token: str,
+    db: AsyncSession = Depends(get_db)
+):
+
+    token_from_db = await validate_email_token(
+        db=db,
+        token=token,
+        purpose='account_restore'
+    )
+
+    invalidate_token(token=token_from_db)
+
+    await restore_user(
+        db=db,
+        user_id=token_from_db.user_id
+    )
+
+    await db.commit()
+
+    return MessageResponse(
+        detail='Account is restored'
+    )
 
 
 @router.get('/users/{user_id}', tags=['users'], response_model=UserProfileResponse)

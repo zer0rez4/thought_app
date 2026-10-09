@@ -50,29 +50,15 @@ async def get_user_by_email(
 
 async def restore_user(
         db: AsyncSession,
-        user_email: str,
-        password: str
+        user_id: int
 ) -> None:
 
-    user = await get_user_by_email(
+    user = await get_user_by_id(
         db = db,
-        user_email = user_email
+        user_id = user_id
     )
 
-    if user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail='account is already active'
-        )
-
-    if not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="password is incorrect"
-        )
-
     user.is_active = True
-    await db.commit()
 
 
 def check_user_active(

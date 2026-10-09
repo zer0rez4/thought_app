@@ -145,7 +145,6 @@ async def resend_verification(
         )
 
 
-
 @router.get(
         '/verify-email',
         tags=['auth'], 

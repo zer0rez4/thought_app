@@ -100,3 +100,35 @@ async def send_reset_password_email(
         text_body=text,
         html_body=html
     )
+
+
+async def send_restore_email(
+    recipient: str,
+    user_name: str,
+    token: str
+) -> None:
+
+    restore_link = (
+        f"{settings.RESTORE_ACCOUNT_URL}?token={token}"
+    )
+
+    html = render_email_template(
+        template_name="email/restore_email.html",
+        restore_link=restore_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
+    )
+
+    text = render_email_template(
+        template_name="email/restore_email.txt",
+        restore_link=restore_link,
+        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        user_name=user_name
+    )
+
+    await send_email(
+        recipient=recipient,
+        subject='Восстановление аккаунта Thoughts app',
+        text_body=text,
+        html_body=html
+    )
