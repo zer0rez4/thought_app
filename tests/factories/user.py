@@ -7,13 +7,15 @@ async def create_user_in_db(
     db, 
     email=DEFAULT_USER["email"], 
     password=DEFAULT_USER["password"], 
-    name=DEFAULT_USER["name"]
+    name=DEFAULT_USER["name"],
+    email_verified=True
 ):
 
     user = UserBase(
         email = email,
         hashed_password = hash_password(password),
-        name = name
+        name = name,
+        email_verified=email_verified
     )
 
     db.add(user)

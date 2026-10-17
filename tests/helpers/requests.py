@@ -1,6 +1,7 @@
 from sqlalchemy import select
 
-from app.database.models import RefreshTokenBase
+from app.database.models import RefreshTokenBase, EmailTokenBase
+from app.core.email import hash_email_token
 from tests.helpers.data import DEFAULT_USER, DEFAULT_THOUGHT
 
 
@@ -12,7 +13,7 @@ async def register_user(client, **kwargs):
     if "name" in kwargs and kwargs["name"] is None:
         del data["name"]
     
-    return await client.post('/register', json=data)
+    return await client.post('/auth/register', json=data)
 
 
 async def login_user(client, **kwargs):
@@ -23,7 +24,7 @@ async def login_user(client, **kwargs):
 
     data.update(kwargs)
 
-    return await client.post("/login", json=data)
+    return await client.post("/auth/login", json=data)
 
 
 def get_refresh_token(response):
@@ -41,7 +42,7 @@ def auth_headers(access_token):
 # ---------- AUTH ----------
 async def refresh_user(client, refresh_token):
     return await client.post(
-        "/refresh",
+        "/auth/refresh",
         json={
             "refresh_token": refresh_token
         }
@@ -50,7 +51,7 @@ async def refresh_user(client, refresh_token):
 
 async def logout_user(client, refresh_token):
     return await client.post(
-        "/logout",
+        "/auth/logout",
         json={
             "refresh_token": refresh_token
         }
@@ -174,3 +175,28 @@ async def delete_thought(client, access_token, thought_id):
         f"/thoughts/{thought_id}",
         headers=auth_headers(access_token)
     )
+
+
+# ---------- EMAIL ----------
+async def get_email_token_from_db(db, token):
+    result = await db.execute(
+        select(EmailTokenBase).where(
+            EmailTokenBase.token_hash == hash_email_token(token)
+        )
+    )
+
+    token_from_db = result.scalar_one()
+
+    return token_from_db
+
+
+async def delete_email_token_from_db(db, token):
+    result = await db.execute(
+        select(EmailTokenBase)
+        .where(EmailTokenBase.token_hash == hash_email_token(token))
+    )
+
+    email_token = result.scalar_one_or_none()
+
+    await db.delete(email_token)
+    await db.flush()

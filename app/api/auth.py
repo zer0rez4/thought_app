@@ -169,6 +169,12 @@ async def verify_email(
         user_id=token_from_db.user_id
     )
 
+    if user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email is already verified"
+        )
+    
     user.email_verified = True
 
     await db.commit()

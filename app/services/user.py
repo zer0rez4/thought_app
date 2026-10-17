@@ -3,7 +3,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import UserBase
-from app.core.security import verify_password
 
 
 async def get_user_by_id(
