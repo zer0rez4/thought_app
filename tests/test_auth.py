@@ -1,42 +1,40 @@
 import pytest
 
-from unittest.mock import AsyncMock
 from sqlalchemy import select
+from datetime import datetime, timedelta, timezone
+
+from app.database.models import EmailTokenBase
+from app.core.email import hash_email_token
+from app.core.settings import settings
+from app.services.user import get_user_by_email
 
 from tests.helpers.requests import (
     register_user,
     login_user,
     refresh_user,
     logout_user,
-    get_refresh_token,
-    auth_headers,
-    delete_refresh_token_from_db,
-    get_email_token_from_db, 
-    delete_email_token_from_db,
+    verify_email,
+    resend_verification_email,
+    logout_all_user
 )
 from tests.helpers.assertions import assert_tokens
 from tests.helpers.data import DEFAULT_USER
-
-from app.database.models import UserBase, EmailTokenBase
-from app.core.email import hash_email_token
-
-from app.core.email import hash_email_token
-from app.core.settings import settings
-from datetime import datetime, timedelta, timezone
-
-from app.services.user import get_user_by_email
+from tests.utils.tokens import get_refresh_token, auth_headers
+from tests.utils.db import (
+    delete_refresh_token_from_db,
+    get_email_token_from_db,
+    delete_email_token_from_db
+)
 
 # ---------- REGISTER ----------
 
 @pytest.mark.asyncio
-async def test_register_success(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
-
+async def test_register_success(
+    client, 
+    db, 
+    send_verification_email_mock
+):
+    
     response = await register_user(client)
 
     assert response.status_code == 201
@@ -44,24 +42,25 @@ async def test_register_success(client, db, monkeypatch):
         "Registration successful. Check your email."
     )
 
-    result = await db.execute(
-        select(UserBase).where(
-            UserBase.email == DEFAULT_USER["email"]
-        )
+    user = await get_user_by_email(
+        db,
+        DEFAULT_USER['email']
     )
-    user = result.scalar_one()
 
     assert user.email_verified is False
     assert user.is_active is True
 
-    send_email_mock.assert_awaited_once_with(
-        recipient=user.email,
-        user_name=user.name,
-        token=send_email_mock.await_args.kwargs["token"]
-    )
+    send_verification_email_mock.assert_awaited_once()
 
-    token = send_email_mock.await_args.kwargs["token"]
+    email_call = send_verification_email_mock.await_args.kwargs
 
+    assert email_call["recipient"] == user.email
+    assert email_call["user_name"] == user.name
+
+    token = email_call["token"]
+    assert isinstance(token, str)
+    assert token
+    
     result = await db.execute(
         select(EmailTokenBase).where(
             EmailTokenBase.user_id == user.id,
@@ -76,13 +75,10 @@ async def test_register_success(client, db, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_register_existing_email(client, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_register_existing_email(
+    client,
+    send_verification_email_mock
+):
 
     first_response = await register_user(client)
     assert first_response.status_code == 201
@@ -92,7 +88,7 @@ async def test_register_existing_email(client, monkeypatch):
     assert response.status_code == 400
     assert response.json()["detail"] == "User already exists"
 
-    send_email_mock.assert_awaited_once()
+    send_verification_email_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -126,50 +122,53 @@ async def test_register_without_name(client):
 # ---------- RESEND-VERIFICATION ----------
 
 @pytest.mark.asyncio
-async def test_resend_verification_success(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_resend_verification_success(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
 
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
-    result = await db.execute(
-        select(EmailTokenBase).where(
-            EmailTokenBase.token_hash == hash_email_token(token)
-        )
-    )
-
-    token_from_db = result.scalar_one()
+    token_from_db = await get_email_token_from_db(db, token)
 
     token_from_db.created_at = datetime.now(timezone.utc) - timedelta(seconds=settings.RESEND_VERIFICATION_COOLDOWN_SECONDS + 1)
 
     await db.flush()
 
-    response = await client.post(
-        '/auth/resend-verification',
-        json={'email': DEFAULT_USER['email']}
-    )
+    response = await resend_verification_email(client)
 
     assert response.status_code == 200
     assert response.json()['detail'] == 'Verification email sent. Check your email.'
-    assert send_email_mock.await_count == 2
+    assert send_verification_email_mock.await_count == 2
+
+    first_token = (
+        send_verification_email_mock
+        .await_args_list[0]
+        .kwargs["token"]
+    )
+
+    second_token = (
+        send_verification_email_mock
+        .await_args_list[1]
+        .kwargs["token"]
+    )
+
+    assert first_token != second_token
 
 
 @pytest.mark.asyncio
 async def test_resend_verification_already_verified_user(client, authenticated_user):
     user_data = await authenticated_user()
 
-    response = await client.post(
-        '/auth/resend-verification',
-        json={'email': user_data['user'].email}
+    response = await resend_verification_email(
+        client,
+        user_data['user'].email
     )
 
     assert response.status_code == 409
@@ -178,166 +177,121 @@ async def test_resend_verification_already_verified_user(client, authenticated_u
 
 @pytest.mark.asyncio
 async def test_resend_verification_user_not_found(client):
-    response = await client.post(
-        '/auth/resend-verification',
-        json={'email': DEFAULT_USER['email']}
-    )
+    response = await resend_verification_email(client)
 
     assert response.status_code == 404
     assert response.json()['detail'] == 'User does not exist'
 
 
 @pytest.mark.asyncio
-async def test_resend_verification_within_cooldown(client, monkeypatch):    
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_resend_verification_within_cooldown(
+    client, 
+    send_verification_email_mock
+):    
 
     register_response = await register_user(client)
 
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
+    send_verification_email_mock.assert_awaited_once()
 
-    response = await client.post(
-        '/auth/resend-verification',
-        json={'email': DEFAULT_USER['email']}
-    )
+    response = await resend_verification_email(client)
 
     assert response.status_code == 429
     assert response.json()['detail'] == 'Please wait before requesting another email'
-
+    send_verification_email_mock.assert_awaited_once()
 
 # ---------- VERIFY-EMAIL ----------
 
 @pytest.mark.asyncio
-async def test_verify_email_success(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_success(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
-    response = await client.get(
-        "/auth/verify-email",
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 200
     assert response.json()["detail"] == "email confirmed"
 
-    result = await db.execute(
-        select(UserBase).where(
-            UserBase.email == DEFAULT_USER["email"]
-        )
-    )
-    user = result.scalar_one()
+    user = await get_user_by_email(db, DEFAULT_USER["email"])
 
     assert user.email_verified is True
 
-    token_hash = hash_email_token(token)
+    token_from_db = await get_email_token_from_db(db, token)
 
-    result = await db.execute(
-        select(EmailTokenBase).where(
-            EmailTokenBase.token_hash == token_hash
-        )
-    )
-
-    email_token = result.scalar_one()
-
-    assert email_token.used_at is not None
+    assert token_from_db.used_at is not None
 
 
 @pytest.mark.asyncio
-async def test_verify_email_expired_token(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_expired_token(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
-    result = await db.execute(
-        select(EmailTokenBase).where(
-            EmailTokenBase.token_hash == hash_email_token(token)
-        )
-    )
-
-    token_from_db = result.scalar_one()
+    token_from_db = await get_email_token_from_db(db, token)
 
     token_from_db.expires_at = datetime.now(timezone.utc) - timedelta(minutes=settings.EMAIL_TOKEN_EXPIRE_MINUTES + 1)
 
     await db.flush()
 
-    response = await client.get(
-        '/auth/verify-email',
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'Token has expired'
 
 
 @pytest.mark.asyncio
-async def test_verify_email_no_token_in_db(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_no_token_in_db(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
     await delete_email_token_from_db(db, token)
 
-    response = await client.get(
-        '/auth/verify-email',
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 400
     assert response.json()['detail'] == 'Invalid token'
 
 
 @pytest.mark.asyncio
-async def test_verify_email_incorrect_purpose(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_incorrect_purpose(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -345,30 +299,25 @@ async def test_verify_email_incorrect_purpose(client, db, monkeypatch):
 
     await db.flush()
 
-    response = await client.get(
-        '/auth/verify-email',
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 400
     assert response.json()['detail'] == 'Invalid token purpose'
 
 
 @pytest.mark.asyncio
-async def test_verify_email_used_token(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_used_token(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -376,30 +325,25 @@ async def test_verify_email_used_token(client, db, monkeypatch):
 
     await db.flush()
 
-    response = await client.get(
-        '/auth/verify-email',
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 400
     assert response.json()['detail'] == 'Token has already been used'
 
 
 @pytest.mark.asyncio
-async def test_verify_email_already_verified_user(client, db, monkeypatch):
-    send_email_mock = AsyncMock()
-
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        send_email_mock
-    )
+async def test_verify_email_already_verified_user(
+    client, 
+    db, 
+    send_verification_email_mock
+):
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_email_mock.assert_awaited_once()
-    token = send_email_mock.await_args.kwargs["token"]
+    send_verification_email_mock.assert_awaited_once()
+    token = send_verification_email_mock.await_args.kwargs["token"]
 
     user = await get_user_by_email(db, DEFAULT_USER['email'])
 
@@ -407,10 +351,7 @@ async def test_verify_email_already_verified_user(client, db, monkeypatch):
 
     await db.flush()
 
-    response = await client.get(
-        '/auth/verify-email',
-        params={"token": token}
-    )
+    response = await verify_email(client, token)
 
     assert response.status_code == 409
     assert response.json()['detail'] == 'Email is already verified'
@@ -601,9 +542,9 @@ async def test_logout_all_success(client, authenticated_user):
         get_refresh_token(await login_user(client)),
     ]
 
-    response = await client.post(
-        '/auth/logout/all', 
-        headers=auth_headers(user_data['access_token'])
+    response = await logout_all_user(
+        client,
+        user_data['access_token']
     )
 
     assert response.status_code == 204
@@ -617,9 +558,10 @@ async def test_logout_all_success(client, authenticated_user):
 
 @pytest.mark.asyncio
 async def test_logout_all_invalid_access_token(client):
-    response = await client.post(
-        '/auth/logout/all', 
-        headers=auth_headers("secret.broken.token"))
+    response = await logout_all_user(
+        client,
+        "secret.broken.token"
+    )
 
     assert response.status_code == 401
     assert response.json()['detail'] == 'invalid token'

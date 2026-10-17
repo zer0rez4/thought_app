@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     AsyncSession
 )
+from unittest.mock import AsyncMock
 
 from app.main import app
 from app.database.database import get_db
@@ -99,3 +100,13 @@ def thought_factory(db):
     async def factory(author_id, **kwargs):
         return await create_thought_in_db(db, author_id, **kwargs)
     return factory
+
+
+@pytest.fixture
+def send_verification_email_mock(monkeypatch):
+    mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.api.auth.send_verification_email",
+        mock,
+    )
+    return mock

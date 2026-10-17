@@ -1,9 +1,5 @@
-from sqlalchemy import select
-
-from app.database.models import RefreshTokenBase, EmailTokenBase
-from app.core.email import hash_email_token
 from tests.helpers.data import DEFAULT_USER, DEFAULT_THOUGHT
-
+from tests.utils.tokens import auth_headers
 
 # ---------- DEFAULT ----------
 async def register_user(client, **kwargs):
@@ -27,18 +23,6 @@ async def login_user(client, **kwargs):
     return await client.post("/auth/login", json=data)
 
 
-def get_refresh_token(response):
-    return response.json()['refresh_token']
-
-
-def get_access_token(response):
-    return response.json()['access_token']
-
-
-def auth_headers(access_token):
-    return {"Authorization": f"Bearer {access_token}"}
-
-
 # ---------- AUTH ----------
 async def refresh_user(client, refresh_token):
     return await client.post(
@@ -58,17 +42,11 @@ async def logout_user(client, refresh_token):
     )
 
 
-async def delete_refresh_token_from_db(db, token):
-    result = await db.execute(
-        select(RefreshTokenBase)
-        .where(RefreshTokenBase.token == token)
+async def logout_all_user(client, access_token):
+    return await client.post(
+        "/auth/logout/all",
+        headers=auth_headers(access_token),
     )
-
-    refresh = result.scalar_one_or_none()
-
-
-    await db.delete(refresh)
-    await db.commit()
 
 
 # ---------- USERS ----------
@@ -178,25 +156,15 @@ async def delete_thought(client, access_token, thought_id):
 
 
 # ---------- EMAIL ----------
-async def get_email_token_from_db(db, token):
-    result = await db.execute(
-        select(EmailTokenBase).where(
-            EmailTokenBase.token_hash == hash_email_token(token)
-        )
+async def verify_email(client, token):
+    return await client.get(
+        "/auth/verify-email",
+        params={"token": token}
     )
 
-    token_from_db = result.scalar_one()
 
-    return token_from_db
-
-
-async def delete_email_token_from_db(db, token):
-    result = await db.execute(
-        select(EmailTokenBase)
-        .where(EmailTokenBase.token_hash == hash_email_token(token))
+async def resend_verification_email(client, email=DEFAULT_USER["email"]):
+    return await client.post(
+        "/auth/resend-verification",
+        json={"email": email}
     )
-
-    email_token = result.scalar_one_or_none()
-
-    await db.delete(email_token)
-    await db.flush()

@@ -2,12 +2,12 @@ import pytest
 
 from sqlalchemy import select
 
-from tests.helpers.data import DEFAULT_USER
+from app.database.models import UserBase
+from app.services.user import get_user_by_email
 
+from tests.helpers.data import DEFAULT_USER
 from tests.helpers.requests import (
     login_user,
-    get_access_token,
-    
     logout_user,
     refresh_user,
     get_users_me,
@@ -16,8 +16,7 @@ from tests.helpers.requests import (
     restore_user,
     get_user
 )
-
-from app.database.models import UserBase
+from tests.utils.tokens import get_access_token
 
 # ---------- GET USERS/ME ----------
 
@@ -260,12 +259,7 @@ async def test_users_restore_success(client, db, authenticated_user):
 
     assert response.status_code == 200
 
-    result = await db.execute(
-        select(UserBase)
-        .where(UserBase.email == DEFAULT_USER["email"])
-    )
-
-    user = result.scalar_one_or_none()
+    user = await get_user_by_email(DEFAULT_USER['email'])
 
     assert user.is_active is True
 
