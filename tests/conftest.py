@@ -103,10 +103,10 @@ def thought_factory(db):
 
 
 @pytest.fixture
-def send_verification_email_mock(monkeypatch):
-    mock = AsyncMock()
-    monkeypatch.setattr(
-        "app.api.auth.send_verification_email",
-        mock,
-    )
-    return mock
+def email_sender_mock(monkeypatch):
+    def create_mock(target: str) -> AsyncMock:
+        mock = AsyncMock()
+        monkeypatch.setattr(target, mock)
+        return mock
+    
+    return create_mock

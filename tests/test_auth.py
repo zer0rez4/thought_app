@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from app.database.models import EmailTokenBase
 from app.core.email import hash_email_token
 from app.core.settings import settings
+from app.core.security import verify_password
 from app.services.user import get_user_by_email
 
 from tests.helpers.requests import (
@@ -15,9 +16,15 @@ from tests.helpers.requests import (
     logout_user,
     verify_email,
     resend_verification_email,
-    logout_all_user
+    logout_all_user,
+    send_reset_password_email,
+    resend_send_reset_password_email,
+    set_new_password
 )
-from tests.helpers.assertions import assert_tokens
+from tests.helpers.assertions import (
+    assert_tokens,
+    assert_resend_email_tokens
+)
 from tests.helpers.data import DEFAULT_USER
 from tests.utils.tokens import get_refresh_token, auth_headers
 from tests.utils.db import (
@@ -32,8 +39,12 @@ from tests.utils.db import (
 async def test_register_success(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
     
     response = await register_user(client)
 
@@ -50,9 +61,9 @@ async def test_register_success(
     assert user.email_verified is False
     assert user.is_active is True
 
-    send_verification_email_mock.assert_awaited_once()
+    send_mock.assert_awaited_once()
 
-    email_call = send_verification_email_mock.await_args.kwargs
+    email_call = send_mock.await_args.kwargs
 
     assert email_call["recipient"] == user.email
     assert email_call["user_name"] == user.name
@@ -60,7 +71,7 @@ async def test_register_success(
     token = email_call["token"]
     assert isinstance(token, str)
     assert token
-    
+
     result = await db.execute(
         select(EmailTokenBase).where(
             EmailTokenBase.user_id == user.id,
@@ -77,8 +88,12 @@ async def test_register_success(
 @pytest.mark.asyncio
 async def test_register_existing_email(
     client,
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
 
     first_response = await register_user(client)
     assert first_response.status_code == 201
@@ -88,7 +103,7 @@ async def test_register_existing_email(
     assert response.status_code == 400
     assert response.json()["detail"] == "User already exists"
 
-    send_verification_email_mock.assert_awaited_once()
+    send_mock.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -125,15 +140,19 @@ async def test_register_without_name(client):
 async def test_resend_verification_success(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
 
     register_response = await register_user(client)
 
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -145,21 +164,9 @@ async def test_resend_verification_success(
 
     assert response.status_code == 200
     assert response.json()['detail'] == 'Verification email sent. Check your email.'
-    assert send_verification_email_mock.await_count == 2
+    assert send_mock.await_count == 2
 
-    first_token = (
-        send_verification_email_mock
-        .await_args_list[0]
-        .kwargs["token"]
-    )
-
-    second_token = (
-        send_verification_email_mock
-        .await_args_list[1]
-        .kwargs["token"]
-    )
-
-    assert first_token != second_token
+    assert_resend_email_tokens(send_mock)
 
 
 @pytest.mark.asyncio
@@ -186,36 +193,44 @@ async def test_resend_verification_user_not_found(client):
 @pytest.mark.asyncio
 async def test_resend_verification_within_cooldown(
     client, 
-    send_verification_email_mock
+    email_sender_mock
 ):    
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
 
     register_response = await register_user(client)
 
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
+    send_mock.assert_awaited_once()
 
     response = await resend_verification_email(client)
 
     assert response.status_code == 429
     assert response.json()['detail'] == 'Please wait before requesting another email'
-    send_verification_email_mock.assert_awaited_once()
+    send_mock.assert_awaited_once()
 
 # ---------- VERIFY-EMAIL ----------
 
 @pytest.mark.asyncio
 async def test_verify_email_success(
-    client, 
-    db, 
-    send_verification_email_mock
+    client,
+    db,
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     response = await verify_email(client, token)
 
@@ -235,15 +250,19 @@ async def test_verify_email_success(
 async def test_verify_email_expired_token(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        'app.api.auth.send_verification_email'
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -261,15 +280,19 @@ async def test_verify_email_expired_token(
 async def test_verify_email_no_token_in_db(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        'app.api.auth.send_verification_email'
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     await delete_email_token_from_db(db, token)
 
@@ -283,15 +306,19 @@ async def test_verify_email_no_token_in_db(
 async def test_verify_email_incorrect_purpose(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        'app.api.auth.send_verification_email'
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -309,15 +336,19 @@ async def test_verify_email_incorrect_purpose(
 async def test_verify_email_used_token(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        'app.api.auth.send_verification_email'
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     token_from_db = await get_email_token_from_db(db, token)
 
@@ -335,15 +366,19 @@ async def test_verify_email_used_token(
 async def test_verify_email_already_verified_user(
     client, 
     db, 
-    send_verification_email_mock
+    email_sender_mock
 ):
+
+    send_mock = email_sender_mock(
+        'app.api.auth.send_verification_email'
+    )
 
     register_response = await register_user(client)
     
     assert register_response.status_code == 201
 
-    send_verification_email_mock.assert_awaited_once()
-    token = send_verification_email_mock.await_args.kwargs["token"]
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
 
     user = await get_user_by_email(db, DEFAULT_USER['email'])
 
@@ -355,6 +390,7 @@ async def test_verify_email_already_verified_user(
 
     assert response.status_code == 409
     assert response.json()['detail'] == 'Email is already verified'
+
     
 # ---------- LOGIN ----------
 
@@ -567,4 +603,162 @@ async def test_logout_all_invalid_access_token(client):
     assert response.json()['detail'] == 'invalid token'
 
 
+# ---------- RESET-PASSWORD ----------
+@pytest.mark.asyncio
+async def test_reset_password_success(
+    client,
+    db, 
+    email_sender_mock,
+    authenticated_user
+):
 
+    send_mock = email_sender_mock(
+        'app.api.auth.send_reset_password_email'
+    )
+    
+    user_data = await authenticated_user()
+
+    user = user_data['user']
+
+    response = await send_reset_password_email(client)
+
+    assert response.status_code == 200
+    assert response.json()["detail"] == (
+        "Reset email sent. Check your email."
+    )
+
+    send_mock.assert_awaited_once()
+
+    email_call = send_mock.await_args.kwargs
+    assert email_call["recipient"] == user.email
+    assert email_call["user_name"] == user.name
+
+    raw_token = email_call["token"]
+    assert isinstance(raw_token, str)
+    assert raw_token
+
+    result = await db.execute(
+        select(EmailTokenBase).where(
+            EmailTokenBase.user_id == user.id,
+            EmailTokenBase.purpose == "reset_password",
+        )
+    )
+    token_in_db = result.scalar_one()
+
+    assert token_in_db.token_hash == hash_email_token(raw_token)
+    assert token_in_db.used_at is None
+    assert token_in_db.expires_at > token_in_db.created_at
+
+
+@pytest.mark.asyncio
+async def test_reset_password_user_not_found(
+    client,
+    email_sender_mock
+):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_reset_password_email"
+    )
+
+    response = await send_reset_password_email(client)
+
+    assert response.status_code == 404
+    send_mock.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_rest_password_cooldown(
+    client,
+    email_sender_mock,
+    authenticated_user
+):
+
+    await authenticated_user()
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_reset_password_email"
+    )
+
+    await send_reset_password_email(client)
+
+    response = await send_reset_password_email(client)
+
+    assert response.status_code == 429
+    assert response.json()["detail"] == "Please wait before requesting another email"
+    send_mock.assert_awaited_once()
+
+
+# ---------- RESEND-RESET-PASSWORD ----------
+@pytest.mark.asyncio
+async def test_resend_reset_password_success(
+    client,
+    db, 
+    email_sender_mock,
+    authenticated_user
+):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_reset_password_email"
+    )
+
+    await authenticated_user()
+
+    await send_reset_password_email(client)
+
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
+
+    token_from_db = await get_email_token_from_db(db, token)
+
+    token_from_db.created_at = datetime.now(timezone.utc) - timedelta(seconds=settings.RESEND_RESET_PASSWORD_COOLDOWN_SECONDS + 1)
+
+    await db.flush()
+
+    response = await resend_send_reset_password_email(client)
+
+    assert response.status_code == 200
+    assert response.json()['detail'] == 'Reset email sent. Check your email.'
+    assert send_mock.await_count == 2
+
+    assert_resend_email_tokens(send_mock)
+
+
+# ---------- SET-NEW-PASSWORD ----------
+@pytest.mark.asyncio
+async def test_set_new_password_success(
+    client,
+    db,
+    email_sender_mock,
+    authenticated_user
+):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_reset_password_email"
+    )
+
+    user_data = await authenticated_user()
+    user = user_data['user']
+
+    await send_reset_password_email(client)
+
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
+
+    new_password = "new_user_password"
+
+    response = await set_new_password(client, token, new_password)
+
+    assert response.status_code == 200
+    assert response.json()['detail'] == 'Password successfully changed'
+
+    user_from_db = await get_user_by_email(db, user.email)
+
+    assert verify_password(
+        new_password,
+        user_from_db.hashed_password,
+    )
+
+    assert not verify_password(
+        DEFAULT_USER["password"],
+        user_from_db.hashed_password,
+    )

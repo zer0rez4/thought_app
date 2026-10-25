@@ -38,35 +38,58 @@ async def send_email(
     )
 
 
+async def send_action_email(
+        recipient: str,
+        user_name: str,
+        token: str,
+        *,
+        url: str,
+        template_prefix: str,
+        link_name: str,
+        subject: str
+) -> None:
+
+    action_link = (
+        f"{url}?token={token}"
+    )
+
+    template_context = {
+        link_name: action_link,
+        "expire_time": settings.EMAIL_TOKEN_EXPIRE_MINUTES,
+        "user_name": user_name
+    }
+
+    html = render_email_template(
+        template_name=f'email/{template_prefix}_email.html',
+        **template_context
+    )
+
+    text = render_email_template(
+        template_name=f'email/{template_prefix}_email.txt',
+        **template_context   
+    )
+
+    await send_email(
+        recipient=recipient,
+        subject=subject,
+        text_body=text,
+        html_body=html
+    )
+
 async def send_verification_email(
     recipient: str,
     user_name: str,
     token: str
 ) -> None:
 
-    verification_link = (
-        f"{settings.VERIFY_EMAIL_URL}?token={token}"
-    )
-
-    html = render_email_template(
-        template_name="email/verify_email.html",
-        verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    text = render_email_template(
-        template_name="email/verify_email.txt",
-        verification_link=verification_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    await send_email(
+    await send_action_email(
         recipient=recipient,
-        subject='Подтверждение аккаунта Thoughts app',
-        text_body=text,
-        html_body=html
+        user_name=user_name,
+        token=token,
+        url=settings.VERIFY_EMAIL_URL,
+        template_prefix='verify',
+        link_name='verification_link',
+        subject='Подтверждение аккаунта Thoughts app'
     )
 
 
@@ -76,29 +99,14 @@ async def send_reset_password_email(
     token: str
 ) -> None:
 
-    reset_password_link = (
-        f"{settings.RESET_PASSWORD_URL}?token={token}"
-    )
-
-    html = render_email_template(
-        template_name="email/reset_password_email.html",
-        reset_password_link=reset_password_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    text = render_email_template(
-        template_name="email/reset_password_email.txt",
-        reset_password_link=reset_password_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    await send_email(
+    await send_action_email(
         recipient=recipient,
-        subject='Сброс пароля Thoughts app',
-        text_body=text,
-        html_body=html
+        user_name=user_name,
+        token=token,
+        url=settings.RESET_PASSWORD_URL,
+        template_prefix='reset_password',
+        link_name='reset_password_link',
+        subject='Сброс пароля Thoughts app'
     )
 
 
@@ -108,27 +116,12 @@ async def send_restore_email(
     token: str
 ) -> None:
 
-    restore_link = (
-        f"{settings.RESTORE_ACCOUNT_URL}?token={token}"
-    )
-
-    html = render_email_template(
-        template_name="email/restore_email.html",
-        restore_link=restore_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    text = render_email_template(
-        template_name="email/restore_email.txt",
-        restore_link=restore_link,
-        expire_time=settings.EMAIL_TOKEN_EXPIRE_MINUTES,
-        user_name=user_name
-    )
-
-    await send_email(
+    await send_action_email(
         recipient=recipient,
-        subject='Восстановление аккаунта Thoughts app',
-        text_body=text,
-        html_body=html
+        user_name=user_name,
+        token=token,
+        url=settings.RESTORE_ACCOUNT_URL,
+        template_prefix='restore',
+        link_name='restore_link',
+        subject='Восстановление аккаунта Thoughts app'
     )

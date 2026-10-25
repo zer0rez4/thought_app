@@ -168,3 +168,24 @@ async def resend_verification_email(client, email=DEFAULT_USER["email"]):
         "/auth/resend-verification",
         json={"email": email}
     )
+
+
+async def send_reset_password_email(client, email=DEFAULT_USER["email"]):
+    return await client.post(
+        "/auth/reset-password",
+        json={"email": email}
+    )
+
+
+async def resend_send_reset_password_email(client, email=DEFAULT_USER["email"]):
+    return await client.post(
+        "/auth/resend-reset-password",
+        json={"email": email}
+    )
+
+
+async def set_new_password(client, token, new_password):
+    return await client.post(
+        "/auth/set-new-password",
+        json={"token": token, "new_password": new_password}
+    )
