@@ -762,3 +762,27 @@ async def test_set_new_password_success(
         DEFAULT_USER["password"],
         user_from_db.hashed_password,
     )
+
+
+@pytest.mark.asyncio
+async def test_set_new_password_same_password(
+    client,
+    email_sender_mock,
+    authenticated_user
+):
+
+    send_mock = email_sender_mock(
+            "app.api.auth.send_reset_password_email"
+    )
+    
+    await authenticated_user()
+
+    await send_reset_password_email(client)
+
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
+
+    response = await set_new_password(client, token, DEFAULT_USER['password'])
+
+    assert response.status_code == 400
+    assert response.json()['detail'] == "New password must be different from the current password"
