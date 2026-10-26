@@ -405,6 +405,12 @@ async def set_new_password(
         user_id=token_from_db.user_id
     )
 
+    if verify_password(data.new_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password"
+        )
+
     user.hashed_password = hash_password(data.new_password)
 
     invalidate_token(token=token_from_db)
