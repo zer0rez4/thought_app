@@ -99,6 +99,13 @@ async def get_user(client, access_token, user_id, **kwargs):
     )
 
 
+async def send_account_restore_request(client, email):
+    return await client.post(
+        "/users/restore",
+        json={"email": email}
+    )
+
+
 # ---------- THOUGHTS ----------
 async def create_thought(client, access_token, text=DEFAULT_THOUGHT["text"], is_public=DEFAULT_THOUGHT["is_public"]):
     return await client.post(

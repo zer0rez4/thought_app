@@ -142,7 +142,8 @@ async def request_account_restore(
 @router.get(
         '/users/restore',
         tags=['users', 'restore'],
-        response_model=MessageResponse
+        response_model=MessageResponse,
+        status_code=status.HTTP_200_OK
 )
 async def confirm_restore_user(
     token: str,

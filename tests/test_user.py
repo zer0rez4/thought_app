@@ -14,7 +14,8 @@ from tests.helpers.requests import (
     update_user,
     delete_user,
     restore_user,
-    get_user
+    get_user,
+    send_account_restore_request
 )
 from tests.utils.tokens import get_access_token
 
@@ -552,20 +553,10 @@ async def test_request_account_restore_success(
     user_data = await authenticated_user()
     user = user_data['user']
 
-    result = await db.execute(
-        select(UserBase).where(
-            UserBase.email == user.email
-        )
-    )
-    user_from_db = result.scalar_one()
-
-    user_from_db.is_active = False
+    user.is_active = False
     await db.flush()
 
-    response = await client.post(
-        "/users/restore",
-        json={"email": user.email}
-    )
+    response = await send_account_restore_request(client, user.email)
 
     assert response.status_code == 200
     assert response.json()['detail'] == 'Restore email sent. Check your email.'
@@ -588,10 +579,7 @@ async def test_request_account_restore_activated_account(
         "app.api.user.send_restore_email"
     )
 
-    response = await client.post(
-        "/users/restore",
-        json={"email": user.email}
-    )
+    response = await send_account_restore_request(client, user.email)
 
     assert response.status_code == 409
     assert response.json()['detail'] == 'account is already active'
@@ -600,13 +588,48 @@ async def test_request_account_restore_activated_account(
 
     result = await db.execute(
         select(EmailTokenBase).where(
-            EmailTokenBase.user_id == user.id
+            EmailTokenBase.user_id == user.id,
+            EmailTokenBase.purpose == 'account_restore'
         )
     )
-    tokens_from_db = result.scalar()
-
-    print(tokens_from_db)
+    tokens_from_db = result.scalar_one_or_none()
 
     assert tokens_from_db is None
 
 
+# ---------- CONFIRM_RESTORE_USER ----------
+@pytest.mark.asyncio
+async def test_confirm_restore_user_success(
+        client,
+        db,
+        email_sender_mock,
+        authenticated_user
+):
+
+    user_data = await authenticated_user()
+    user = user_data['user']
+
+    user.is_active = False
+
+    await db.flush()
+
+    send_mock = email_sender_mock(
+        "app.api.user.send_restore_email"
+    )
+
+    await send_account_restore_request(client, user.email)
+
+    send_mock.assert_awaited_once()
+    token = send_mock.await_args.kwargs["token"]
+
+    response = await client.get(
+        "/users/restore",
+        params={"token": token}
+    )
+
+    assert response.status_code == 200
+    assert response.json()['detail'] == 'Account is restored'
+
+    user_from_db = await get_user_by_email(db, user.email)
+
+    assert user_from_db.is_active is True
