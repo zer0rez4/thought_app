@@ -1,21 +1,21 @@
 <h1 align='center'>
-Thoughts API
+   Thoughts API
 </h1>
 
 <p align="center">
-REST API for creating, managing and sharing personal and public thoughts with authentication and access control.
+   REST API for creating, managing and sharing personal and public thoughts with authentication and access control.
 </p>
 
 <p align="center">
 
-[![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-green)](https://fastapi.tiangolo.com/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)](https://www.sqlalchemy.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)](https://www.postgresql.org/)
-[![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)](https://docs.pydantic.dev/)
-[![Docker](https://img.shields.io/badge/Docker-blue)](https://www.docker.com/)
-[![Alembic](https://img.shields.io/badge/Alembic-red)](https://alembic.sqlalchemy.org/)
-[![Pytest](https://img.shields.io/badge/Pytest-blue)](https://docs.pytest.org/)
+   [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
+   [![FastAPI](https://img.shields.io/badge/FastAPI-green)](https://fastapi.tiangolo.com/)
+   [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)](https://www.sqlalchemy.org/)
+   [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)](https://www.postgresql.org/)
+   [![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)](https://docs.pydantic.dev/)
+   [![Docker](https://img.shields.io/badge/Docker-blue)](https://www.docker.com/)
+   [![Alembic](https://img.shields.io/badge/Alembic-red)](https://alembic.sqlalchemy.org/)
+   [![Pytest](https://img.shields.io/badge/Pytest-blue)](https://docs.pytest.org/)
 
 </p>
 
@@ -28,25 +28,46 @@ The project includes user authentication, access control, token management, data
 
 ## ✨ Features
 
-- User registration and login
-- JWT-based authentication
-- Access and refresh token management
-- Refresh token rotation
-- Logout and logout from all devices
-- Secure password hashing
-- Thought creation and management
-- Public and private thought visibility control
-- User authorization and access control
-- Pagination
-- Text search
-- Request validation
+### Authentication & Security
+
+- User registration and email verification
+- JWT-based authentication with access and refresh tokens
+- Refresh token rotation and revocation
+- Logout from the current session or all devices
+- Password hashing and password reset via email
+- Token expiration and validation
+- User-level authorization and access control
+
+### User Management
+
+- User profile retrieval and updates
 - Soft account deletion
-- User restoration
-- PostgreSQL database
-- Dockerized application with PostgreSQL
-- Alembic database migrations
-- Automated tests with Pytest
-- Asynchronous SQLAlchemy and asynchronous database sessions
+- Account restoration via email
+- Email-based verification and recovery workflows
+
+### Thought Management
+
+- Create, retrieve, update and delete thoughts
+- Public and private thought visibility
+- Access-controlled thought operations
+- Paginated thought retrieval
+- Text search
+- Random public thought retrieval
+
+### Database & Infrastructure
+
+- PostgreSQL relational database
+- Asynchronous database operations with SQLAlchemy
+- Schema migrations with Alembic
+- Dockerized application and PostgreSQL setup using Docker Compose
+- Automatic database migrations on application startup
+
+### Testing
+
+- Automated tests with Pytest and pytest-asyncio
+- Asynchronous API testing with HTTPX AsyncClient
+- Separate test database
+- Tests covering authentication, email workflows, user management and thought operations
 
 ## 🛠 Technologies
 
@@ -120,7 +141,7 @@ docker compose down -v
 
 ## 🧪 Testing
 
-The project contains 80 automated tests covering authentication, users and thoughts.
+The project contains 95 automated tests covering authentication, users and thoughts.
 
 Tests use pytest, pytest-asyncio, HTTPX AsyncClient and an asynchronous SQLAlchemy session.
 
@@ -144,7 +165,7 @@ Async SQLAlchemy
    │
 PostgreSQL
 ```
-The application separates API handling, business logic, data models, validation schemas and database migrations.
+The application separates HTTP handling, business logic, database operations and request/response validation. SQLAlchemy is used with asynchronous database sessions, while Alembic manages schema migrations.
 
 ## 📁 Project Structure
 ```text
@@ -164,6 +185,7 @@ thought_app/
 │   │
 │   ├── core/                # Application configuration and security
 │   │   ├── dependencies.py
+│   │   ├── email.py
 │   │   ├── jwt.py
 │   │   ├── security.py
 │   │   └── settings.py
@@ -173,14 +195,31 @@ thought_app/
 │   │   └── database.py
 │   │
 │   ├── schemas/             # Pydantic schemas for validation
+│   │   ├── email.py
+│   │   ├── response.py
 │   │   ├── thoughts.py
 │   │   ├── token.py
 │   │   └── user.py
 │   │
 │   ├── services/            # Business logic
 │   │   ├── auth.py
+│   │   ├── email_token.py
+│   │   ├── email.py
 │   │   ├── thought.py
 │   │   └── user.py
+│   │
+│   ├── templates/            # Templates
+│   │   └── email/            # Email templates
+│   │      ├── reset_password_email.html
+│   │      ├── reset_password_email.txt
+│   │      ├── restore_email.html
+│   │      ├── restore_email.txt
+│   │      ├── verify_email.html
+│   │      └── verify_email.txt
+│   │
+│   ├── utils/            # Shared utility functions
+│   │   ├── templates.py
+│   │   └── validators.py
 │   │
 │   └── main.py
 │
@@ -194,6 +233,10 @@ thought_app/
 │   │   ├── assertions.py
 │   │   ├── data.py
 │   │   └── requests.py
+│   │
+│   ├── utils/
+│   │   ├── db.py
+│   │   └── tokens.py
 │   │
 │   ├── conftest.py
 │   ├── test_auth.py
@@ -226,11 +269,16 @@ The project structure is organized into separate layers with clear responsibilit
 
 | Method | Endpoint | Description |
 |-|-|-|
-| POST | /register | Create account |
-| POST | /login | Login user |
-| POST | /refresh | Generate new access token using refresh token |
-| POST | /logout | Revoke current refresh token |
-| POST | /logout/all | Revoke all user's refresh tokens |
+| POST | /auth/register | Register a new account |
+| POST | /auth/resend-verification | Request another verification email |
+| GET | /auth/verify-email | Verify email |
+| POST | /auth/login | Login user |
+| POST | /auth/refresh | Generate new access token using refresh token |
+| POST | /auth/logout | Revoke current refresh token |
+| POST | /auth/logout/all | Revoke all user's refresh tokens |
+| POST | /auth/reset-password | Request a password reset email |
+| POST | /auth/resend-reset-password | Request another password reset email |
+| POST | /auth/set-new-password | Set a new password using a reset token |
 
 ### 💭 Thoughts
 
@@ -251,22 +299,24 @@ The project structure is organized into separate layers with clear responsibilit
 | GET | /users/me | Get user's profile |
 | PATCH | /users/me | Update user |
 | DELETE | /users/me | Delete user |
-| POST | /users/restore | Restore user |
+| POST | /users/restore | Request an account restoration email |
+| GET | /users/restore | Restore an account using a token |
 | GET | /users/{user_id} | Get user and user's thoughts by id |
 
 ## 🔐 Security
 
-Implemented:
+The application implements the following security mechanisms:
 
 - Password hashing using Passlib and bcrypt
-- JWT authentication
-- Access and refresh token system
+- JWT-based access and refresh tokens
 - Refresh token rotation
-- Token revocation
-- Protected endpoints
-- User authorization and access control
+- Refresh token revocation during logout
+- Token validation and expiration checks
+- Protected endpoints and user-level access control
+- Email verification
+- Password reset through email tokens
+- Account restoration through email tokens
 - Soft account deletion
-- Password verification
 
 ## 🔄 Token Flow
 
