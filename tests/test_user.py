@@ -2,7 +2,7 @@ import pytest
 
 from sqlalchemy import select
 
-from app.database.models import UserBase
+from app.database.models import UserBase, EmailTokenBase
 from app.services.user import get_user_by_email
 
 from tests.helpers.data import DEFAULT_USER
@@ -534,4 +534,79 @@ async def test_get_users_userid_pagination(client, authenticated_user, thought_f
     assert thoughts["items"][0]["id"] == created_thoughts[2].id
     assert thoughts["items"][1]["id"] == created_thoughts[3].id
     assert thoughts["has_next"] is True
+
+
+# ---------- REQUEST_ACCOUNT_RESTORE ----------
+@pytest.mark.asyncio
+async def test_request_account_restore_success(
+        client,
+        db,
+        email_sender_mock,
+        authenticated_user
+):
+
+    send_mock = email_sender_mock(
+        "app.api.user.send_restore_email"
+    )
+
+    user_data = await authenticated_user()
+    user = user_data['user']
+
+    result = await db.execute(
+        select(UserBase).where(
+            UserBase.email == user.email
+        )
+    )
+    user_from_db = result.scalar_one()
+
+    user_from_db.is_active = False
+    await db.flush()
+
+    response = await client.post(
+        "/users/restore",
+        json={"email": user.email}
+    )
+
+    assert response.status_code == 200
+    assert response.json()['detail'] == 'Restore email sent. Check your email.'
+
+    send_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_request_account_restore_activated_account(
+        client,
+        db,
+        email_sender_mock,
+        authenticated_user
+):
+
+    user_data = await authenticated_user()
+    user = user_data['user']
+
+    send_mock = email_sender_mock(
+        "app.api.user.send_restore_email"
+    )
+
+    response = await client.post(
+        "/users/restore",
+        json={"email": user.email}
+    )
+
+    assert response.status_code == 409
+    assert response.json()['detail'] == 'account is already active'
+    
+    send_mock.assert_not_called()
+
+    result = await db.execute(
+        select(EmailTokenBase).where(
+            EmailTokenBase.user_id == user.id
+        )
+    )
+    tokens_from_db = result.scalar()
+
+    print(tokens_from_db)
+
+    assert tokens_from_db is None
+
 
