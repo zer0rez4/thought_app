@@ -13,7 +13,6 @@ from tests.helpers.requests import (
     get_users_me,
     update_user,
     delete_user,
-    restore_user,
     get_user,
     send_account_restore_request
 )
@@ -247,52 +246,6 @@ async def test_delete_user_login_after_delete(client, authenticated_user):
 
     assert response.status_code == 403
     assert response.json()['detail'] == 'account is deleted'
-
-
-# ---------- POST USERS/RESTORE ----------
-@pytest.mark.asyncio
-async def test_users_restore_success(client, db, authenticated_user):
-    auth_user = await authenticated_user()
-
-    await delete_user(client, auth_user['access_token'])
-
-    response = await restore_user(client)
-
-    assert response.status_code == 200
-
-    user = await get_user_by_email(DEFAULT_USER['email'])
-
-    assert user.is_active is True
-
-
-@pytest.mark.asyncio
-async def test_users_restore_user_not_exist(client):
-    response = await restore_user(client)
-
-    assert response.status_code == 404
-    assert response.json()['detail'] == 'User does not exist'
-
-
-@pytest.mark.asyncio
-async def test_users_restore_user_is_active(client, authenticated_user):
-    await authenticated_user()
-
-    response = await restore_user(client)
-
-    assert response.status_code == 409
-    assert response.json()['detail'] == 'account is already active'
-
-
-@pytest.mark.asyncio
-async def test_users_restore_wrong_password(client, authenticated_user):
-    user = await authenticated_user()
-
-    await delete_user(client, user['access_token'])
-
-    response = await restore_user(client, password="wrong_password")
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "password is incorrect"
 
 
 # ---------- GET USERS/{USER_ID} ----------

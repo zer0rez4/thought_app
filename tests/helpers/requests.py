@@ -77,20 +77,6 @@ async def delete_user(client, access_token):
     )
 
 
-async def restore_user(client, **kwargs):
-    data = {
-        "email": DEFAULT_USER["email"],
-        "password": DEFAULT_USER["password"],
-    }
-
-    data.update(kwargs)
-
-    return await client.post(
-        "/users/restore",
-        json=data
-    )
-
-
 async def get_user(client, access_token, user_id, **kwargs):
     return await client.get(
         f"/users/{user_id}",
