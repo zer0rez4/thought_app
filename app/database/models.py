@@ -43,7 +43,7 @@ class RefreshTokenBase(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    token = Column(String, nullable=False)
+    hashed_token = Column(String, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     revoked = Column(Boolean, default=False)
 

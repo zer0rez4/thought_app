@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import settings
 from app.core.jwt import create_access_token, create_refresh_token, decode_token
+from app.core.security import hash_token
 from app.database.models import RefreshTokenBase
 from app.schemas.token import TokenResponse
 
@@ -30,7 +31,7 @@ def generate_tokens(
 
     refresh_token_db = RefreshTokenBase(
         user_id=user_id,
-        token=refresh_token,
+        hashed_token=hash_token(refresh_token),
         expires_at=refresh_expire,
     )
 
@@ -63,7 +64,7 @@ async def validate_refresh_token(
 
     result = await db.execute(
         select(RefreshTokenBase)
-        .where(RefreshTokenBase.token == token)
+        .where(RefreshTokenBase.hashed_token == hash_token(token))
     )
 
     refresh_token_db = result.scalar_one_or_none()
