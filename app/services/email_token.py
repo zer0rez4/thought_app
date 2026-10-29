@@ -3,9 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
 
-from app.core.email import (
-    generate_email_token, hash_email_token
-)
+from app.core.email import (generate_email_token)
+from app.core.security import hash_token
 from app.core.settings import settings
 from app.database.models import EmailTokenBase
 
@@ -17,7 +16,7 @@ async def create_email_token(
 ) -> str:
 
     token = generate_email_token()
-    hashed_token = hash_email_token(token)
+    hashed_token = hash_token(token)
 
     created = datetime.now(timezone.utc)
     expire = created + timedelta(
@@ -44,7 +43,7 @@ async def validate_email_token(
         purpose: str
 ) -> EmailTokenBase:
 
-    hashed_token = hash_email_token(token)
+    hashed_token = hash_token(token)
 
     result = await db.execute(
         select(EmailTokenBase)

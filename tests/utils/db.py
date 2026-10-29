@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from app.services.email_token import hash_email_token
+from app.core.security import hash_token
 
 from app.database.models import RefreshTokenBase, EmailTokenBase
 
@@ -21,7 +21,7 @@ async def delete_refresh_token_from_db(db, token):
 async def get_email_token_from_db(db, token):
     result = await db.execute(
         select(EmailTokenBase).where(
-            EmailTokenBase.token_hash == hash_email_token(token)
+            EmailTokenBase.token_hash == hash_token(token)
         )
     )
 
@@ -33,7 +33,7 @@ async def get_email_token_from_db(db, token):
 async def delete_email_token_from_db(db, token):
     result = await db.execute(
         select(EmailTokenBase)
-        .where(EmailTokenBase.token_hash == hash_email_token(token))
+        .where(EmailTokenBase.token_hash == hash_token(token))
     )
 
     email_token = result.scalar_one_or_none()

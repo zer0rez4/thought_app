@@ -4,9 +4,8 @@ from sqlalchemy import select
 from datetime import datetime, timedelta, timezone
 
 from app.database.models import EmailTokenBase
-from app.core.email import hash_email_token
 from app.core.settings import settings
-from app.core.security import verify_password
+from app.core.security import verify_password, hash_token
 from app.services.user import get_user_by_email
 
 from tests.helpers.requests import (
@@ -80,7 +79,7 @@ async def test_register_success(
     )
     email_token = result.scalar_one()
 
-    assert email_token.token_hash == hash_email_token(token)
+    assert email_token.token_hash == hash_token(token)
     assert email_token.used_at is None
     assert email_token.expires_at > email_token.created_at
 
@@ -645,7 +644,7 @@ async def test_reset_password_success(
     )
     token_in_db = result.scalar_one()
 
-    assert token_in_db.token_hash == hash_email_token(raw_token)
+    assert token_in_db.token_hash == hash_token(raw_token)
     assert token_in_db.used_at is None
     assert token_in_db.expires_at > token_in_db.created_at
 
