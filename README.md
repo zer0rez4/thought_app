@@ -141,7 +141,7 @@ docker compose down -v
 
 ## 🧪 Testing
 
-The project contains 95 automated tests covering authentication, users and thoughts.
+The project contains 97 automated tests covering authentication, users and thoughts.
 
 Tests use pytest, pytest-asyncio, HTTPX AsyncClient and an asynchronous SQLAlchemy session.
 
@@ -311,6 +311,7 @@ The application implements the following security mechanisms:
 - JWT-based access and refresh tokens
 - Refresh token rotation
 - Refresh token revocation during logout
+- Refresh token hashing before database storage
 - Token validation and expiration checks
 - Protected endpoints and user-level access control
 - Email verification
@@ -322,7 +323,7 @@ The application implements the following security mechanisms:
 
 The application uses JWT-based authentication with access and refresh tokens.
 
-- Access tokens are used for API authorization
-- Refresh tokens are stored in the database
-- Each refresh request revokes the current refresh token and issues a new access/refresh token pair
-- Refresh tokens can be revoked during logout
+- Access tokens are used for API authorization.
+- Refresh tokens are stored in the database as SHA-256 hashes rather than plain-text tokens.
+- Each refresh request revokes the current refresh token and issues a new access/refresh token pair.
+- Refresh tokens can be revoked during logout, either for the current session or all sessions.

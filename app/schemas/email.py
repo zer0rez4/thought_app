@@ -4,6 +4,11 @@ from app.utils.validators import validate_password
 class EmailRequest(BaseModel):
     email: EmailStr
 
+    @field_validator('email', mode='before')
+    @classmethod
+    def lower_email(cls, email: EmailStr) -> EmailStr:
+        return email.strip().lower()
+
 
 class PasswordResetRequest(BaseModel):
     token: str

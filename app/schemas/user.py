@@ -18,11 +18,21 @@ class UserCreate(BaseModel):
         if not name.strip():
             raise ValueError('The name can not be empty')
         return name.strip()
+    
+    @field_validator('email', mode='before')
+    @classmethod
+    def lower_email(cls, email: EmailStr) -> EmailStr:
+        return email.strip().lower()
 
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def lower_email(cls, email: EmailStr) -> EmailStr:
+        return email.strip().lower()
 
 
 class UserResponse(BaseModel):

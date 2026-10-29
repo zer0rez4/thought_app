@@ -106,6 +106,27 @@ async def test_register_existing_email(
 
 
 @pytest.mark.asyncio
+async def test_register_existing_email_different_case(
+    client, 
+    email_sender_mock
+):
+
+    send_mock = email_sender_mock(
+        "app.api.auth.send_verification_email"
+    )
+
+    first_response = await register_user(client)
+    assert first_response.status_code == 201
+
+    response = await register_user(client, email="TEST@gmail.com")
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "User already exists"
+
+    send_mock.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_register_invalid_email(client):
     response = await register_user(client, email="just_email")
 
@@ -398,6 +419,21 @@ async def test_login_success(client, authenticated_user):
     await authenticated_user()
 
     response = await login_user(client)
+
+    assert response.status_code == 200
+
+    assert_tokens(response.json())
+
+
+@pytest.mark.asyncio
+async def test_login_success_different_case(
+    client, 
+    authenticated_user
+):
+    
+    await authenticated_user()
+
+    response = await login_user(client, email="TEST@gmail.com")
 
     assert response.status_code == 200
 
