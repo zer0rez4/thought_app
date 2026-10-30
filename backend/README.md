@@ -3,27 +3,47 @@
 </h1>
 
 <p align="center">
-   REST API for creating, managing and sharing personal and public thoughts with authentication and access control.
+    Backend service for creating, managing, and sharing personal and public thoughts.
 </p>
 
 <p align="center">
-
-   [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
-   [![FastAPI](https://img.shields.io/badge/FastAPI-green)](https://fastapi.tiangolo.com/)
-   [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-red)](https://www.sqlalchemy.org/)
-   [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-blue)](https://www.postgresql.org/)
-   [![Pydantic](https://img.shields.io/badge/Pydantic-2-blue)](https://docs.pydantic.dev/)
-   [![Docker](https://img.shields.io/badge/Docker-blue)](https://www.docker.com/)
-   [![Alembic](https://img.shields.io/badge/Alembic-red)](https://alembic.sqlalchemy.org/)
-   [![Pytest](https://img.shields.io/badge/Pytest-blue)](https://docs.pytest.org/)
-
+    Built with FastAPI, PostgreSQL, and SQLAlchemy.
 </p>
 
-## 📌 About
+<p align="center">
+    <a href="https://www.python.org/">
+        <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
+    </a>
+    <a href="https://fastapi.tiangolo.com/">
+        <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
+    </a>
+    <a href="https://www.sqlalchemy.org/">
+        <img src="https://img.shields.io/badge/SQLAlchemy-ORM-D71F00" alt="SQLAlchemy">
+    </a>
+    <a href="https://www.postgresql.org/">
+        <img src="https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
+    </a>
+    <a href="https://docs.pydantic.dev/">
+        <img src="https://img.shields.io/badge/Pydantic-v2-E92063?logo=pydantic&logoColor=white" alt="Pydantic v2">
+    </a>
+    <a href="https://www.docker.com/">
+        <img src="https://img.shields.io/badge/Docker-Containerization-2496ED?logo=docker&logoColor=white" alt="Docker">
+    </a>
+    <a href="https://alembic.sqlalchemy.org/">
+        <img src="https://img.shields.io/badge/Alembic-Migrations-6BAA75" alt="Alembic">
+    </a>
+    <a href="https://docs.pytest.org/">
+        <img src="https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white" alt="Pytest">
+    </a>
+</p>
 
-Thoughts API is a backend application for creating, managing and sharing personal and public thoughts.
+## 📖 About
 
-The project includes user authentication, access control, token management, data validation, search, pagination, automated testing and database migrations.
+This directory contains the backend implementation of Thoughts API.
+
+The application provides a REST API for managing thoughts and user accounts, with JWT authentication, access control, email-based account workflows, and asynchronous database operations.
+
+See the [root README](../README.md) for an overview of the entire project and instructions for running it with Docker Compose.
 
 
 ## ✨ Features
@@ -69,7 +89,7 @@ The project includes user authentication, access control, token management, data
 - Separate test database
 - Tests covering authentication, email workflows, user management and thought operations
 
-## 🛠 Technologies
+## 🛠️ Technology stack
 
 | Technology | Usage |
 |-|-|
@@ -88,7 +108,7 @@ The project includes user authentication, access control, token management, data
 | python-jose | JWT token generation and validation |
 | Passlib + bcrypt | Secure password hashing |
 
-## 🚀 Getting Started
+## 🚀 Local Development
 ### Prerequisites
 
 - Docker
@@ -145,13 +165,13 @@ The project contains 97 automated tests covering authentication, users and thoug
 
 Tests use pytest, pytest-asyncio, HTTPX AsyncClient and an asynchronous SQLAlchemy session.
 
-Run the test suite:
+Run the following commands from the `backend/` directory:
 
 ```bash
 python -m pytest
 ```
 
-## 🏗 Architecture
+## 🏗️ Architecture
 
 The project follows a layered architecture approach:
 ```text
@@ -169,7 +189,7 @@ The application separates HTTP handling, business logic, database operations and
 
 ## 📁 Project Structure
 ```text
-thought_app/
+backend/
 │
 ├── alembic/
 │   ├── versions/
@@ -244,10 +264,7 @@ thought_app/
 │   └── test_user.py
 │
 ├── .dockerignore
-├── .env.example
-├── .gitignore
 ├── alembic.ini
-├── compose.yaml
 ├── Dockerfile
 ├── pytest.ini
 ├── README.md
