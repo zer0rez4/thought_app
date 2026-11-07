@@ -1,0 +1,203 @@
+:root {
+    --color-background: #0B0D12;
+    --color-surface: #121722;
+    --color-surface-secondary: #1A2230;
+
+    --color-text: #F1F3F8;
+    --color-text-secondary: #A1AABD;
+    --color-text-muted: #6E788B;
+
+    --color-primary: #3978F6;
+    --color-border: #263044;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+html,
+body {
+    min-height: 100%;
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-text);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    height: 64px;
+    padding: 0 28px;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.logo {
+    padding: 0;
+    margin: 0;
+}
+
+.logo h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.logo h1 a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.account {
+    padding: 0;
+    border-radius: 10px;
+}
+
+.account:hover {
+    box-shadow: 0 6px 20px rgba(57, 120, 246, 0.25);
+}
+
+.account button {
+    width: 36px;
+    height: 36px;
+    align-items: center;
+
+    background-color: var(--color-surface);
+    color: var(--color-text-secondary);
+
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+
+    font-size: 18px;
+    cursor: pointer;
+}
+
+#account-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+main {
+    min-height: calc(100vh - 64px);
+}
+
+.start-page {
+    min-height: calc(100vh - 64px);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding-bottom: 80px;
+}
+
+#start-btn {
+    padding: 16px 32px;
+
+    background-color: var(--color-primary);
+    color: var(--color-text);
+
+    border: none;
+    border-radius: 10px;
+
+    font-size: 16px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-shadow: 0 4px 16px rgba(57, 120, 246, 0.15);
+
+    transition: all 0.2s ease;
+}
+
+#start-btn:hover {
+    background-color: #4B86F8;
+    box-shadow: 0 6px 20px rgba(57, 120, 246, 0.25);
+    transform: translateY(-2px);
+}
+
+
+/* thought-page */
+.thought-page {
+    min-height: calc(100vh - 60px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+}
+
+.thought-view {
+    width: 100%;
+    max-width: 700px;
+
+    transform: translateY(-60px);
+}
+
+#thought-text {
+    font-family: Georgia, serif;
+    font-size: 28px;
+    line-height: 1.5;
+    color: var(--color-text);
+}
+
+#author-name {
+    text-align: right;
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+
+#thought-btn {
+    padding: 16px 32px;
+
+    background-color: var(--color-primary);
+    color: var(--color-text);
+
+    border: none;
+    border-radius: 10px;
+
+    font-size: 16px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    box-shadow: 0 4px 16px rgba(57, 120, 246, 0.15);
+
+    transition: all 0.2s ease;
+}
+
+#thought-btn:hover {
+    background-color: #4B86F8;
+    box-shadow: 0 6px 20px rgba(57, 120, 246, 0.25);
+    transform: translateY(-2px);
+}
+
+.other-btns {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    gap: 15px;
+    width: 100%;
+
+    padding-top: 32px;
+}
+
+#thought-search-btn,
+#thought-create-btn {
+    border: none;
+    background: transparent;
+
+    display: flex;
+    justify-content: space-around;
+
+    padding: 10px 20px;
+
+    color: var(--color-text-secondary);
+}

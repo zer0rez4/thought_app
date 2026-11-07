@@ -60,7 +60,7 @@ async def random_thought(db: AsyncSession = Depends(get_db)):
 
     return build_thought_response(
         thought = thought,
-    )   
+    )
 
 
 @router.get('/thoughts/my', tags=['thought'], response_model=ThoughtListResponse)
