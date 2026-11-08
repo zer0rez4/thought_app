@@ -1,3 +1,7 @@
+// =======================
+// DOM ELEMENTS
+// =======================
+
 const startPage = document.querySelector('.start-page');
 const thoughtPage = document.querySelector('.thought-page');
 
@@ -22,6 +26,10 @@ const changeAuthButton = document.querySelectorAll('.change-auth-btn');
 const registerForm = document.getElementById('register-form');
 const authForm = document.getElementById('auth-form');
 
+// =======================
+// DATA
+// =======================
+
 // фейк данные (будет запрос к api)
 const thoughtArr = [
     {
@@ -44,38 +52,41 @@ const thoughtArr = [
     },
 ];
 
-function chooseNumber() {
+// =======================
+// RANDOM THOUGHT
+// =======================
+
+function getRandomThoughtIndex() {
     return Math.floor(thoughtArr.length * Math.random());
 }
 // фейк данные (будет запрос к api)
 
-startButton.addEventListener('click', () => {
-    startPage.hidden = !startPage.hidden
-    thoughtPage.hidden = !thoughtPage.hidden
-
-    const thought = thoughtArr[chooseNumber()]
-
+function displayThought() {
+    const thought = thoughtArr[getRandomThoughtIndex()];
+    
     thoughtText.textContent = '"' + thought.text + '"';
     thoughtAuthor.textContent = '- ' + thought.author;
+}
+
+startButton.addEventListener('click', () => {
+    startPage.hidden = true;
+    thoughtPage.hidden = false;
+
+    displayThought();
 });
 
 thoughtButton.addEventListener('click', () => {
-    const thought = thoughtArr[chooseNumber()]
-
-    thoughtText.textContent = '"' + thought.text + '"';
-    thoughtAuthor.textContent = '- ' + thought.author;
+    displayThought();
 });
 
-accountButton.addEventListener('click', () => {
-    dialog.showModal();
-});
+// =======================
+// AUTH MODAL
+// =======================
 
-searchButton.addEventListener('click', () => {
-    dialog.showModal();
-});
-
-createButton.addEventListener('click', () => {
-    dialog.showModal();
+[accountButton, searchButton, createButton].forEach(button => {
+    button.addEventListener('click', () => {
+        dialog.showModal();
+    });
 });
 
 changeAuthButton.forEach(button => {
@@ -90,6 +101,10 @@ closeButton.forEach(button => {
         dialog.close();
     });
 });
+
+// =======================
+// FORM VALIDATION
+// =======================
 
 function validateForm(form) {
     let isValid = true;
