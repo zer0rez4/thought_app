@@ -40,7 +40,12 @@ async def thought_create(
     )
 
 
-@router.get('/thoughts/random', tags=['thought'], response_model=ThoughtResponse)
+@router.get(
+        '/thoughts/random', 
+        tags=['thought'], 
+        response_model=ThoughtResponse,
+        status_code=status.HTTP_200_OK
+)
 async def random_thought(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(ThoughtBase)

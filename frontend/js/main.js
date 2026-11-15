@@ -27,42 +27,51 @@ const registerForm = document.getElementById('register-form');
 const authForm = document.getElementById('auth-form');
 
 // =======================
-// DATA
-// =======================
-
-// фейк данные (будет запрос к api)
-const thoughtArr = [
-    {
-        id: 1,
-        text: 'Оставим мертвым хоронить мертвых, а пока жив, надо жить и быть счастливым',
-        author: 'Лев Толстой',
-        is_public: true
-    },
-    {
-        id: 2,
-        text: 'Стремитесь не к успеху, а к ценностям, которые он дает',
-        author: 'Альберт Эйнштейн',
-        is_public: true
-    },
-    {
-        id: 3,
-        text: 'Нет ничего более сильного, чем человек, решивший встать после падения',
-        author: 'Фёдор Достоевский',
-        is_public: true
-    },
-];
-
-// =======================
 // RANDOM THOUGHT
 // =======================
 
-function getRandomThoughtIndex() {
-    return Math.floor(thoughtArr.length * Math.random());
-}
-// фейк данные (будет запрос к api)
+async function getRandomThought() {
+    const thought = {
+        'text': '',
+        'author': ''
+    };
+    
+    try {
+        const response = await fetch('http://127.0.0.1:8000/thoughts/random', {
+            method: 'GET'
+        });
 
-function displayThought() {
-    const thought = thoughtArr[getRandomThoughtIndex()];
+        const responseData = await response.json();
+
+        if (response.status === 404) {
+            console.warn(responseData['detail']);
+           
+            thought.text = 'Сейчас доступных мыслей нет, но Вы можете добавить свои';
+            thought.author = 'Админ THOUGHTS';
+
+            return thought;
+
+        } else if (!response.ok) {
+            throw new Error(`Error: ${response.status}\nDetail: ${responseData['detail']}`);
+        }
+
+        thought.text = responseData['text'];
+        thought.author = responseData['author'];
+
+        return thought;
+    }
+    catch (error) {
+        console.error(error.message);
+
+        thought.text = 'Ошибка сервера, попробуйте позже';
+        thought.author = 'Злой сервер';
+
+        return thought;
+    }
+}
+
+async function displayRadomThought() {
+    const thought = await getRandomThought();
     
     thoughtText.textContent = '"' + thought.text + '"';
     thoughtAuthor.textContent = '- ' + thought.author;
@@ -72,11 +81,11 @@ startButton.addEventListener('click', () => {
     startPage.hidden = true;
     thoughtPage.hidden = false;
 
-    displayThought();
+    displayRadomThought();
 });
 
 thoughtButton.addEventListener('click', () => {
-    displayThought();
+    displayRadomThought();
 });
 
 // =======================
