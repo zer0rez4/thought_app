@@ -1,3 +1,5 @@
+import '../js/auth.js'
+
 // =======================
 // DOM ELEMENTS
 // =======================
@@ -16,15 +18,12 @@ const createButton = document.getElementById('thought-create-btn');
 const thoughtText = document.getElementById('thought-text');
 const thoughtAuthor = document.getElementById('author-name');
 
-const registerDialog = document.querySelector('.register');
-const authDialog = document.querySelector('.authorisation');
+const registerWrapper = document.querySelector('.register');
+const authWrapper = document.querySelector('.authorisation');
 
 const dialog = document.getElementById('auth-modal');
 const closeButton = document.querySelectorAll('.close-btn');
 const changeAuthButton = document.querySelectorAll('.change-auth-btn');
-
-const registerForm = document.getElementById('register-form');
-const authForm = document.getElementById('auth-form');
 
 // =======================
 // RANDOM THOUGHT
@@ -92,16 +91,21 @@ thoughtButton.addEventListener('click', () => {
 // AUTH MODAL
 // =======================
 
+// вместо этого будет нормальная обработка 
 [accountButton, searchButton, createButton].forEach(button => {
     button.addEventListener('click', () => {
+        if (registerWrapper.hidden === true && authWrapper.hidden === true) {
+            authWrapper.hidden = false;
+        }
+
         dialog.showModal();
     });
 });
 
 changeAuthButton.forEach(button => {
     button.addEventListener('click', () => {
-        registerDialog.hidden = !registerDialog.hidden;
-        authDialog.hidden = !authDialog.hidden;
+        registerWrapper.hidden = !registerWrapper.hidden;
+        authWrapper.hidden = !authWrapper.hidden;
     });
 });
 
@@ -111,68 +115,4 @@ closeButton.forEach(button => {
     });
 });
 
-// =======================
-// FORM VALIDATION
-// =======================
 
-function validateForm(form) {
-    let isValid = true;
-
-    const inputs = form.querySelectorAll('input');
-
-    inputs.forEach(input => {
-        const error = input.nextElementSibling;
-
-        if (!input.checkValidity()) {
-            isValid = false;
-            input.classList.add('invalid');
-
-            if (input.validity.valueMissing) {
-                error.textContent = 'Это поле обязательно';
-            } else if (input.validity.typeMismatch) {
-                error.textContent = 'Некорректный формат';
-            } else if (input.validity.tooShort) {
-                error.textContent = 'Пароль должен содержать минимум 6 символов';
-            }
-        } else {
-            input.classList.remove('invalid');
-            error.textContent = '';
-        }
-    });
-
-    return isValid;
-}
-
-registerForm.addEventListener('submit', event => {
-    event.preventDefault();
-
-    if (!validateForm(registerForm)) {
-        return;
-    }
-
-    // здесь будет запрос к API
-});
-
-authForm.addEventListener('submit', event => {
-    event.preventDefault();
-
-    if (!validateForm(authForm)) {
-        return;
-    }
-
-    // здесь будет запрос к API
-});
-
-
-[registerForm, authForm].forEach(form => {
-    form.addEventListener('input', event => {
-        const input = event.target;
-
-        const errorText = input.nextElementSibling;
-
-        if (input.checkValidity()) {
-            input.classList.remove('invalid');
-            errorText.textContent = '';
-        }
-    });
-})

@@ -56,7 +56,7 @@ async def register(
 
     if existing_user:
         raise HTTPException(
-            status_code = status.HTTP_400_BAD_REQUEST,
+            status_code = status.HTTP_409_CONFLICT,
             detail = 'User already exists'
         )
 
