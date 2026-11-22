@@ -10,6 +10,9 @@ A REST API for creating, managing, and sharing personal and public thoughts.
     <a href="https://www.python.org/">
         <img src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white" alt="Python 3.12">
     </a>
+    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript">
+        <img src="https://img.shields.io/badge/Frontend-Vanilla%20JS-F7DF1E?logo=javascript&logoColor=black" alt="Vanilla JavaScript">
+    </a>
     <a href="https://fastapi.tiangolo.com/">
         <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI">
     </a>
@@ -35,9 +38,7 @@ A REST API for creating, managing, and sharing personal and public thoughts.
 
 ## Overview
 
-Thoughts API is a backend application that allows users to create and manage thoughts, control their visibility, and share public content.
-
-The project demonstrates backend development practices including layered architecture, asynchronous database access, token-based authentication, database migrations, and automated testing.
+Thoughts is a full-stack application for creating, managing, and sharing personal and public thoughts. It consists of a robust FastAPI backend and a lightweight, vanilla JavaScript frontend with JWT authentication and email verification flows.
 
 ## Features
 
@@ -94,6 +95,10 @@ thought_app/
 │   ├── Dockerfile
 │   ├── alembic.ini
 │   └── requirements.txt
+├── frontend/
+│   ├── css/
+│   ├── js/
+│   └── index.html
 ├── compose.yaml
 ├── .env.example
 ├── .gitignore
@@ -141,7 +146,18 @@ The API will be available at:
 - API: http://localhost:8000
 - Interactive API documentation: http://localhost:8000/docs
 
-### 4. Stop the application
+### 4. Run the Frontend (Optional)
+The frontend is a standalone Single Page Application (SPA). To run it locally alongside the backend:
+
+1. Open the `frontend/` directory in your code editor.
+2. Use a local development server. For example, with VS Code "Live Server" extension, or Python:
+   
+From the root of the project
+```bash
+python -m http.server 5500 --directory frontend
+```
+
+### 5. Stop the application
 
 ```bash
 docker compose down
@@ -161,9 +177,9 @@ The backend includes an automated test suite built with Pytest, pytest-asyncio, 
 
 For test setup and execution instructions, see [`backend/README.md`](backend/README.md).
 
-## Backend Documentation
-
-For detailed information about the backend architecture, API endpoints, authentication flows, database migrations, and testing, see [`backend/README.md`](backend/README.md).
+## Documentation
+- For detailed information about the backend architecture, API endpoints, and database, see [`backend/README.md`](backend/README.md).
+- For details on the frontend architecture, module structure, and local setup, see [`frontend/README.md`](frontend/README.md).
 
 ## Project Status
 
