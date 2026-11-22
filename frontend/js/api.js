@@ -1,5 +1,21 @@
 const API_URL = 'http://127.0.0.1:8000';
 
+
+function getAuthHeaders() {
+    const token = localStorage.getItem('access_token');
+
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+
 async function registerUser(name, email, password) {
     const response = await fetch(`${API_URL}/auth/register`, {
         method: 'POST',
@@ -37,4 +53,22 @@ async function resendEmailVerification(email) {
     return response;
 }
 
-export { registerUser, resendEmailVerification }; 
+async function loginUser(email, password) {
+    const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            email: email,
+            password: password
+        })
+    });
+    
+    return response;
+}
+
+export { 
+    registerUser, resendEmailVerification,
+    loginUser 
+ }; 

@@ -195,19 +195,10 @@ async def login(
     db: AsyncSession = Depends(get_db)
     ):
 
-    result = await db.execute(
-        select(UserBase).where(
-            UserBase.email == user.email
-        )
+    log_user = await get_user_by_email(
+        db,
+        user.email
     )
-
-    log_user = result.scalar_one_or_none()
-    
-    if not log_user:
-        raise HTTPException(
-            status_code = status.HTTP_404_NOT_FOUND,
-            detail = 'User does not exist'
-        )
 
     if not verify_password(user.password, log_user.hashed_password):
         raise HTTPException(

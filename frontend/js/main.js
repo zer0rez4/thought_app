@@ -26,6 +26,30 @@ const closeButton = document.querySelectorAll('.close-btn');
 const changeAuthButton = document.querySelectorAll('.change-auth-btn');
 
 // =======================
+// AUTH STATUS CHECK
+// =======================
+checkAuthStatus();
+
+function checkAuthStatus() {
+    const accessToken = localStorage.getItem('access_token');
+    const accountBtn = document.getElementById('account-btn');
+
+    if (accessToken) {
+        // ДОЛЖЕН ОТКРЫВАТЬСЯ ПРОФИЛЬ
+        accountBtn.onclick = logoutUser;
+        
+    } else {
+        accountBtn.onclick = () => {
+            if (registerWrapper.hidden === true && authWrapper.hidden === true) {
+                authWrapper.hidden = false;
+                registerWrapper.hidden = true;
+            }
+            dialog.showModal();
+        };
+    }
+}
+
+// =======================
 // RANDOM THOUGHT
 // =======================
 
@@ -91,8 +115,8 @@ thoughtButton.addEventListener('click', () => {
 // AUTH MODAL
 // =======================
 
-// вместо этого будет нормальная обработка 
-[accountButton, searchButton, createButton].forEach(button => {
+// будет нормальная обратока
+[searchButton, createButton].forEach(button => {
     button.addEventListener('click', () => {
         if (registerWrapper.hidden === true && authWrapper.hidden === true) {
             authWrapper.hidden = false;
